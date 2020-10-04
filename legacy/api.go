@@ -27,7 +27,7 @@ func init() {
 // API contract
 type API interface {
 	Get(ctx context.Context) ([]VehicleLegacy, error)
-	Create(ctx context.Context, vehicle entity.Vehicle) (*VehicleLegacy, error)
+	Create(ctx context.Context, vehicle *entity.Vehicle) error
 	Update(ctx context.Context, vehicle entity.Vehicle) (*VehicleLegacy, error)
 	// Delete(ctx context.Context, id int) (*http.Response, error)
 }
@@ -82,7 +82,7 @@ func (s srv) Get(ctx context.Context) ([]VehicleLegacy, error) {
 	return items, nil
 }
 
-func (s srv) Create(ctx context.Context, vehicle entity.Vehicle) (*VehicleLegacy, error) {
+func (s srv) Create(ctx context.Context, vehicle *entity.Vehicle) error {
 	b := body{
 		Operacao: "criar",
 		Veiculo: VehicleLegacy{
@@ -100,25 +100,24 @@ func (s srv) Create(ctx context.Context, vehicle entity.Vehicle) (*VehicleLegacy
 	req, err := utils.MakeRequest(method, APIURI, b)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	res, err := Client.Do(req)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	body, _ := ioutil.ReadAll(res.Body)
 
-	v := VehicleLegacy{}
-	err = json.Unmarshal(body, &v)
+	err = json.Unmarshal(body, &vehicle)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &v, nil
+	return nil
 }
 
 func (s srv) Update(ctx context.Context, vehicle entity.Vehicle) (*VehicleLegacy, error) {

@@ -29,6 +29,17 @@ var (
 		ValorLance:     0,
 		UsuarioLance:   "-",
 	}
+	v = entity.Vehicle{
+		ID:                vehicleLegacy.ID,
+		Brand:             vehicleLegacy.Marca,
+		Model:             vehicleLegacy.Modelo,
+		ModelYear:         vehicleLegacy.AnoModelo,
+		ManufacturingYear: vehicleLegacy.AnoFabricacao,
+		Lot: entity.Lot{
+			ID:           vehicleLegacy.Lote,
+			VehicleLotID: vehicleLegacy.CodigoControle,
+		},
+	}
 )
 
 func TestByID(t *testing.T) {
@@ -110,20 +121,9 @@ func TestCreate(t *testing.T) {
 		defer cancel()
 		c := gomock.NewController(t)
 		defer c.Finish()
-		v := entity.Vehicle{
-			ID:                vehicleLegacy.ID,
-			Brand:             vehicleLegacy.Marca,
-			Model:             vehicleLegacy.Modelo,
-			ModelYear:         vehicleLegacy.AnoModelo,
-			ManufacturingYear: vehicleLegacy.AnoFabricacao,
-			Lot: entity.Lot{
-				ID:           vehicleLegacy.Lote,
-				VehicleLotID: vehicleLegacy.CodigoControle,
-			},
-		}
 
 		api := mock_legacy.NewMockAPI(c)
-		api.EXPECT().Create(ctx, v).Return(&vehicleLegacy, nil)
+		api.EXPECT().Create(ctx, &v).Return(nil)
 
 		srv := vehicle.NewService(api)
 		item, _ := srv.Create(ctx, v)
@@ -144,20 +144,9 @@ func TestCreate_Error(t *testing.T) {
 		defer cancel()
 		c := gomock.NewController(t)
 		defer c.Finish()
-		v := entity.Vehicle{
-			ID:                vehicleLegacy.ID,
-			Brand:             vehicleLegacy.Marca,
-			Model:             vehicleLegacy.Modelo,
-			ModelYear:         vehicleLegacy.AnoModelo,
-			ManufacturingYear: vehicleLegacy.AnoFabricacao,
-			Lot: entity.Lot{
-				ID:           vehicleLegacy.Lote,
-				VehicleLotID: vehicleLegacy.CodigoControle,
-			},
-		}
 
 		api := mock_legacy.NewMockAPI(c)
-		api.EXPECT().Create(ctx, v).Return(nil, errors.New("legacy API fails"))
+		api.EXPECT().Create(ctx, &v).Return(errors.New("legacy API fails"))
 
 		srv := vehicle.NewService(api)
 		item, err := srv.Create(ctx, v)

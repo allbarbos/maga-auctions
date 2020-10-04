@@ -57,13 +57,11 @@ func (s srv) ByID(ctx context.Context, id int) (*entity.Vehicle, error) {
 }
 
 func (s srv) Create(ctx context.Context, vehicle entity.Vehicle) (*entity.Vehicle, error) {
-	l, err := s.legacyAPI.Create(ctx, vehicle)
+	err := s.legacyAPI.Create(ctx, &vehicle)
 
-	if err != nil || l == nil {
+	if err != nil || vehicle.ID == 0 {
 		return nil, handler.InternalServer{Message: "error creating vehicle"}
 	}
-
-	vehicle.ID = l.ID
 
 	return &vehicle, nil
 }

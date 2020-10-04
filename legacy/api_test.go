@@ -116,14 +116,15 @@ func TestCreate(t *testing.T) {
 		defer cancel()
 		legacy.Client = &mock_legacy.MockClient{}
 		mock_legacy.GetDoFunc = func(*http.Request) (*http.Response, error) {
+			vel.ID = 13
 			return &http.Response{Body: validResponseBody(vel)}, nil
 		}
 
 		api := legacy.NewAPI()
-		resp, _ := api.Create(ctx, ve)
+		err := api.Create(ctx, &ve)
 
-		assert.NotNil(t, resp)
-		assert.Equal(t, vel, *resp)
+		assert.Nil(t, err)
+		assert.Greater(t, vel.ID, 0)
 	})
 }
 
@@ -157,7 +158,7 @@ func TestCreate_Errors(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()
 
-			_, err := api.Create(ctx, ve)
+			err := api.Create(ctx, &ve)
 
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, tt.want)
