@@ -28,6 +28,7 @@ type VehicleController interface {
 	Create(c *gin.Context)
 	ByID(c *gin.Context)
 	Update(c *gin.Context)
+	Delete(c *gin.Context)
 }
 
 type vehicleCtrl struct {
@@ -192,4 +193,30 @@ func (v vehicleCtrl) Update(c *gin.Context) {
 	}
 
 	handler.ResponseSuccess(200, res, c)
+}
+
+func (v vehicleCtrl) Delete(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 32)
+
+	if err != nil {
+		handler.ResponseError(
+			handler.BadRequest{
+				Message: "id is invalid",
+			},
+			c,
+		)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	err = v.srv.Delete(ctx, int(id))
+
+	if err != nil {
+		handler.ResponseError(err, c)
+		return
+	}
+
+	handler.ResponseSuccess(200, nil, c)
 }
