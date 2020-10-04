@@ -27,6 +27,7 @@ type Link struct {
 type VehicleController interface {
 	Create(c *gin.Context)
 	ByID(c *gin.Context)
+	Update(c *gin.Context)
 }
 
 type vehicleCtrl struct {
@@ -40,7 +41,6 @@ func NewVehicle(srv vehicle.Service) VehicleController {
 	}
 }
 
-// Create vehicle
 func (v vehicleCtrl) Create(c *gin.Context) {
 	var ve entity.Vehicle
 	err := c.BindJSON(&ve)
@@ -124,6 +124,63 @@ func (v vehicleCtrl) ByID(c *gin.Context) {
 			{
 				Relation:     "self",
 				RelationType: "PUT",
+				URI:          c.Request.RequestURI,
+			},
+			{
+				Relation:     "self",
+				RelationType: "DELETE",
+				URI:          c.Request.RequestURI,
+			},
+		},
+	}
+
+	handler.ResponseSuccess(200, res, c)
+}
+
+func (v vehicleCtrl) Update(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 32)
+
+	if err != nil {
+		handler.ResponseError(
+			handler.BadRequest{
+				Message: "id is invalid",
+			},
+			c,
+		)
+		return
+	}
+
+	var ve entity.Vehicle
+	err = c.BindJSON(&ve)
+
+	if err != nil {
+		handler.ResponseError(
+			handler.BadRequest{
+				Message: "body is invalid",
+			},
+			c,
+		)
+		return
+	}
+
+	ve.ID = int(id)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	err = v.srv.Update(ctx, &ve)
+
+	if err != nil {
+		handler.ResponseError(err, c)
+		return
+	}
+
+	res := response{
+		Vehicle: ve,
+		Links: []Link{
+			{
+				Relation:     "self",
+				RelationType: "GET",
 				URI:          c.Request.RequestURI,
 			},
 			{

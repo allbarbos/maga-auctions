@@ -18,8 +18,9 @@ func Config() *gin.Engine {
 	router := gin.Default()
 
 	router.GET("/maga-auctions/v1/health-check", healthCtrl().HealthCheck)
-	router.GET("/maga-auctions/v1/vehicles/:id", vehicleCtrl().ByID)
 	router.POST("/maga-auctions/v1/vehicles", vehicleCtrl().Create)
+	router.GET("/maga-auctions/v1/vehicles/:id", vehicleCtrl().ByID)
+	router.PUT("/maga-auctions/v1/vehicles/:id", vehicleCtrl().Update)
 
 	return router
 }
