@@ -1,0 +1,35 @@
+package api
+
+import (
+	ctrl "api-facade/api/controller"
+	"api-facade/env"
+	"api-facade/legacy"
+	"api-facade/vehicle"
+
+	"github.com/gin-gonic/gin"
+)
+
+// Config routes
+func Config() *gin.Engine {
+	if env.Vars.API.Env == "production" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
+	router := gin.Default()
+
+	router.GET("/maga-auctions/v1/health-check", healthCtrl().HealthCheck)
+	router.GET("/maga-auctions/v1/vehicles/:id", vehicleCtrl().ByID)
+	router.POST("/maga-auctions/v1/vehicles", vehicleCtrl().Create)
+
+	return router
+}
+
+func healthCtrl() ctrl.HealthCheck {
+	return ctrl.HealthCheck{}
+}
+
+func vehicleCtrl() ctrl.VehicleController {
+	api := legacy.NewAPI()
+	srv := vehicle.NewService(api)
+	return ctrl.NewVehicle(srv)
+}
