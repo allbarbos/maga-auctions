@@ -3,13 +3,13 @@ package main
 import (
 	"log"
 	"maga-auctions/api"
-	"maga-auctions/env"
+	"maga-auctions/utils"
 	"net/http"
 	"time"
 )
 
 func main() {
-	port := ":" + env.Vars.API.Port
+	port := ":" + utils.EnvVars.API.Port
 
 	if port == ":" {
 		log.Fatal("PORT must be set")

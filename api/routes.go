@@ -2,8 +2,8 @@ package api
 
 import (
 	ctrl "maga-auctions/api/controller"
-	"maga-auctions/env"
 	"maga-auctions/legacy"
+	"maga-auctions/utils"
 	"maga-auctions/vehicle"
 
 	"github.com/gin-gonic/gin"
@@ -11,7 +11,7 @@ import (
 
 // Config routes
 func Config() *gin.Engine {
-	if env.Vars.API.Env == "production" {
+	if utils.EnvVars.API.Env == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 

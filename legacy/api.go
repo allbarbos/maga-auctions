@@ -6,9 +6,9 @@ import (
 	"errors"
 	"io/ioutil"
 	"maga-auctions/entity"
-	"maga-auctions/env"
 	"maga-auctions/utils"
 	"net/http"
+	"regexp"
 )
 
 var (
@@ -20,7 +20,7 @@ var (
 
 func init() {
 	Client = &http.Client{}
-	APIURI = env.Vars.APILegacy.URI
+	APIURI = utils.EnvVars.APILegacy.URI
 	method = "POST"
 }
 
@@ -28,7 +28,7 @@ func init() {
 type API interface {
 	Get(ctx context.Context) ([]VehicleLegacy, error)
 	Create(ctx context.Context, vehicle *entity.Vehicle) error
-	Update(ctx context.Context, vehicle entity.Vehicle) (*VehicleLegacy, error)
+	Update(ctx context.Context, vehicle *entity.Vehicle) error
 	// Delete(ctx context.Context, id int) (*http.Response, error)
 }
 
@@ -120,7 +120,7 @@ func (s srv) Create(ctx context.Context, vehicle *entity.Vehicle) error {
 	return nil
 }
 
-func (s srv) Update(ctx context.Context, vehicle entity.Vehicle) (*VehicleLegacy, error) {
+func (s srv) Update(ctx context.Context, vehicle *entity.Vehicle) error {
 	b := body{
 		Operacao: "alterar",
 		Veiculo: VehicleLegacy{
@@ -139,20 +139,27 @@ func (s srv) Update(ctx context.Context, vehicle entity.Vehicle) (*VehicleLegacy
 	req, err := utils.MakeRequest(method, APIURI, b)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	res, err := Client.Do(req)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	if res.StatusCode == 200 {
-		return &b.Veiculo, nil
+	if res.StatusCode != 200 {
+		return errors.New("error when updating in legacy api")
 	}
 
-	return nil, errors.New("error when updating in legacy api")
+	body, _ := ioutil.ReadAll(res.Body)
+	isError, _ := regexp.MatchString("nao encontrado", string(body))
+
+	if isError {
+		return errors.New("id not found")
+	}
+
+	return nil
 }
 
 // func (s srv) Delete(ctx context.Context, id int) (*http.Response, error) {

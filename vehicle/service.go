@@ -12,6 +12,7 @@ import (
 type Service interface {
 	Create(ctx context.Context, vehicle entity.Vehicle) (*entity.Vehicle, error)
 	ByID(ctx context.Context, id int) (*entity.Vehicle, error)
+	Update(ctx context.Context, vehicle *entity.Vehicle) error
 }
 
 type srv struct {
@@ -60,8 +61,25 @@ func (s srv) Create(ctx context.Context, vehicle entity.Vehicle) (*entity.Vehicl
 	err := s.legacyAPI.Create(ctx, &vehicle)
 
 	if err != nil || vehicle.ID == 0 {
-		return nil, handler.InternalServer{Message: "error creating vehicle"}
+		return nil, handler.InternalServer{Message: err.Error()}
 	}
 
 	return &vehicle, nil
+}
+
+func (s srv) Update(ctx context.Context, vehicle *entity.Vehicle) error {
+	if vehicle.ID <= 0 {
+		return handler.BadRequest{Message: "invalid id"}
+	}
+
+	if err := s.legacyAPI.Update(ctx, vehicle); err != nil {
+		msg := err.Error()
+		if msg == "id not found" {
+			return handler.BadRequest{Message: msg}
+		}
+
+		return handler.InternalServer{Message: msg}
+	}
+
+	return nil
 }

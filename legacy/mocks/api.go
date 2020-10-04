@@ -65,12 +65,11 @@ func (mr *MockAPIMockRecorder) Create(ctx, vehicle interface{}) *gomock.Call {
 }
 
 // Update mocks base method
-func (m *MockAPI) Update(ctx context.Context, vehicle entity.Vehicle) (*legacy.VehicleLegacy, error) {
+func (m *MockAPI) Update(ctx context.Context, vehicle *entity.Vehicle) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Update", ctx, vehicle)
-	ret0, _ := ret[0].(*legacy.VehicleLegacy)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // Update indicates an expected call of Update

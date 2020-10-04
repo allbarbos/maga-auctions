@@ -1,4 +1,4 @@
-package env
+package utils
 
 import (
 	"fmt"
@@ -9,13 +9,13 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Vars is the configuration of environment
-var Vars Config
+// EnvVars is the configuration of environment
+var EnvVars Config
 
 func init() {
-	readFile(&Vars)
-	readEnv(&Vars)
-	fmt.Printf("%+v", Vars)
+	readFile(&EnvVars)
+	readEnv(&EnvVars)
+	fmt.Printf("%+v", EnvVars)
 }
 
 // Config contains the mapping of environment variables

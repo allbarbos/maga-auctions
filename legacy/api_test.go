@@ -49,13 +49,6 @@ func validResponseBody(payload interface{}) io.ReadCloser {
 	return ioutil.NopCloser(bytes.NewReader(b))
 }
 
-func invalidResponseBody() io.ReadCloser {
-	items := struct{ invalid bool }{invalid: true}
-
-	b, _ := json.Marshal(items)
-	return ioutil.NopCloser(bytes.NewReader(b))
-}
-
 func TestGet(t *testing.T) {
 	t.Run("must return a list of vehicles", func(t *testing.T) {
 		defer cancel()
@@ -175,10 +168,9 @@ func TestUpdate(t *testing.T) {
 		}
 
 		api := legacy.NewAPI()
-		resp, _ := api.Update(ctx, ve)
+		err := api.Update(ctx, &ve)
 
-		assert.NotNil(t, resp)
-		assert.Equal(t, vel, *resp)
+		assert.Nil(t, err)
 	})
 }
 
@@ -203,6 +195,11 @@ func TestUpdate_Errors(t *testing.T) {
 			doRes: &http.Response{StatusCode: 500},
 			want:  "error when updating in legacy api",
 		},
+		{
+			desc:  "must return an error when id is not found",
+			doRes: &http.Response{StatusCode: 200, Body: validResponseBody(struct{ Mensagem string }{"nao encontrado"})},
+			want:  "id not found",
+		},
 	}
 
 	for _, tt := range testCases {
@@ -214,9 +211,8 @@ func TestUpdate_Errors(t *testing.T) {
 			}
 
 			api := legacy.NewAPI()
-			resp, err := api.Update(ctx, ve)
+			err := api.Update(ctx, &ve)
 
-			assert.Nil(t, resp)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, tt.want)
 		})
