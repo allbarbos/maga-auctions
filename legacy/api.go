@@ -1,19 +1,19 @@
 package legacy
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"maga-auctions/entity"
 	"maga-auctions/env"
+	"maga-auctions/utils"
 	"net/http"
 )
 
 var (
 	// Client is the web client
-	Client HTTPClient
+	Client utils.HTTPClient
 	// APIURI is legacy service url
 	APIURI, method string
 )
@@ -30,11 +30,6 @@ type API interface {
 	Create(ctx context.Context, vehicle entity.Vehicle) (*VehicleLegacy, error)
 	Update(ctx context.Context, vehicle entity.Vehicle) (*VehicleLegacy, error)
 	// Delete(ctx context.Context, id int) (*http.Response, error)
-}
-
-// HTTPClient is the web client
-type HTTPClient interface {
-	Do(req *http.Request) (*http.Response, error)
 }
 
 type srv struct{}
@@ -62,23 +57,8 @@ func NewAPI() API {
 	return &srv{}
 }
 
-func makeRequest(body interface{}) (*http.Request, error) {
-	b, err := json.Marshal(body)
-	payload := bytes.NewReader(b)
-
-	req, err := http.NewRequest(method, APIURI, payload)
-
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", "application/json")
-
-	return req, nil
-}
-
 func (s srv) Get(ctx context.Context) ([]VehicleLegacy, error) {
-	req, err := makeRequest(body{Operacao: "consultar"})
+	req, err := utils.MakeRequest(method, APIURI, body{Operacao: "consultar"})
 
 	if err != nil {
 		return nil, err
@@ -117,7 +97,7 @@ func (s srv) Create(ctx context.Context, vehicle entity.Vehicle) (*VehicleLegacy
 		},
 	}
 
-	req, err := makeRequest(b)
+	req, err := utils.MakeRequest(method, APIURI, b)
 
 	if err != nil {
 		return nil, err
@@ -157,7 +137,7 @@ func (s srv) Update(ctx context.Context, vehicle entity.Vehicle) (*VehicleLegacy
 		},
 	}
 
-	req, err := makeRequest(b)
+	req, err := utils.MakeRequest(method, APIURI, b)
 
 	if err != nil {
 		return nil, err
