@@ -5,10 +5,10 @@
 package mock_legacy
 
 import (
-	entity "api-facade/entity"
-	legacy "api-facade/legacy"
 	context "context"
 	gomock "github.com/golang/mock/gomock"
+	entity "maga-auctions/entity"
+	legacy "maga-auctions/legacy"
 	http "net/http"
 	reflect "reflect"
 )

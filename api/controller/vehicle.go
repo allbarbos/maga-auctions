@@ -1,11 +1,11 @@
 package controller
 
 import (
-	"api-facade/api/handler"
-	"api-facade/entity"
-	"api-facade/vehicle"
 	"context"
 	"fmt"
+	"maga-auctions/api/handler"
+	"maga-auctions/entity"
+	"maga-auctions/vehicle"
 	"strconv"
 	"time"
 

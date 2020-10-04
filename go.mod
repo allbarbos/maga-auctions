@@ -1,4 +1,4 @@
-module api-facade
+module maga-auctions
 
 go 1.14
 

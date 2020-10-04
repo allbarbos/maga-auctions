@@ -1,10 +1,10 @@
 package api
 
 import (
-	ctrl "api-facade/api/controller"
-	"api-facade/env"
-	"api-facade/legacy"
-	"api-facade/vehicle"
+	ctrl "maga-auctions/api/controller"
+	"maga-auctions/env"
+	"maga-auctions/legacy"
+	"maga-auctions/vehicle"
 
 	"github.com/gin-gonic/gin"
 )

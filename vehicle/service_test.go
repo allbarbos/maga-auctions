@@ -1,13 +1,13 @@
 package vehicle_test
 
 import (
-	"api-facade/entity"
-	"api-facade/legacy"
-	mock_legacy "api-facade/legacy/mocks"
-	"api-facade/vehicle"
 	"context"
 	"errors"
 	"fmt"
+	"maga-auctions/entity"
+	"maga-auctions/legacy"
+	mock_legacy "maga-auctions/legacy/mocks"
+	"maga-auctions/vehicle"
 	"testing"
 	"time"
 

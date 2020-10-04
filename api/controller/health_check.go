@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"api-facade/entity"
+	"maga-auctions/entity"
 
 	"github.com/gin-gonic/gin"
 )

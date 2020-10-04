@@ -1,9 +1,9 @@
 package vehicle
 
 import (
-	"api-facade/api/handler"
-	"api-facade/entity"
-	"api-facade/legacy"
+	"maga-auctions/api/handler"
+	"maga-auctions/entity"
+	"maga-auctions/legacy"
 
 	"context"
 )

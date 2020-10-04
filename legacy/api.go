@@ -1,12 +1,12 @@
 package legacy
 
 import (
-	"api-facade/entity"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"maga-auctions/entity"
 	"net/http"
 )
 

@@ -1,9 +1,9 @@
 package main
 
 import (
-	"api-facade/api"
-	"api-facade/env"
 	"log"
+	"maga-auctions/api"
+	"maga-auctions/env"
 	"net/http"
 	"time"
 )

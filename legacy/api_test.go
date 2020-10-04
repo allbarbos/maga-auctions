@@ -1,9 +1,9 @@
 package legacy_test
 
 import (
-	"api-facade/entity"
-	"api-facade/legacy"
-	mock_legacy "api-facade/legacy/mocks"
+	"maga-auctions/entity"
+	"maga-auctions/legacy"
+	mock_legacy "maga-auctions/legacy/mocks"
 
 	"bytes"
 	"context"
