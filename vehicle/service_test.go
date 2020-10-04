@@ -220,3 +220,68 @@ func TestUpdate_Errors(t *testing.T) {
 		})
 	}
 }
+
+func TestDelete(t *testing.T) {
+	t.Run("must delete vehicle", func(t *testing.T) {
+		defer cancel()
+		c := gomock.NewController(t)
+		defer c.Finish()
+
+		api := mock_legacy.NewMockAPI(c)
+		api.EXPECT().Delete(ctx, 1).Return(nil)
+
+		srv := vehicle.NewService(api)
+		err := srv.Delete(ctx, 1)
+
+		assert.Nil(t, err)
+	})
+}
+
+func TestDelete_Errors(t *testing.T) {
+	testCases := []struct {
+		desc, want string
+		id         int
+		err        error
+		items      []legacy.VehicleLegacy
+	}{
+		{
+			desc: "must return error when id less than zero",
+			id:   0,
+			err:  errors.New("id not found"),
+			want: "invalid id",
+		},
+		{
+			desc: "must return error when id is not found",
+			id:   1000,
+			err:  errors.New("id not found"),
+			want: "id not found",
+		},
+		{
+			desc: "must return error when an unknown error occurs in legacy api",
+			id:   2,
+			err:  errors.New("error when updating in legacy api"),
+			want: "internal server error",
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.desc, func(t *testing.T) {
+			defer cancel()
+			c := gomock.NewController(t)
+			defer c.Finish()
+
+			api := mock_legacy.NewMockAPI(c)
+
+			if tt.id != 0 {
+				api.EXPECT().Delete(ctx, tt.id).Return(tt.err)
+			}
+
+			v.ID = tt.id
+			srv := vehicle.NewService(api)
+			err := srv.Delete(ctx, tt.id)
+
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, tt.want)
+		})
+	}
+}
