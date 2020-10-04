@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io/ioutil"
 	"maga-auctions/entity"
+	"maga-auctions/env"
 	"net/http"
 )
 
@@ -19,7 +20,7 @@ var (
 
 func init() {
 	Client = &http.Client{}
-	APIURI = "https://dev.apiluiza.com.br/legado/veiculo"
+	APIURI = env.Vars.APILegacy.URI
 	method = "POST"
 }
 
@@ -27,7 +28,7 @@ func init() {
 type API interface {
 	Get(ctx context.Context) ([]VehicleLegacy, error)
 	Create(ctx context.Context, vehicle entity.Vehicle) (*VehicleLegacy, error)
-	// Update(ctx context.Context, id int, auction entity.Auction) (*http.Response, error)
+	Update(ctx context.Context, vehicle entity.Vehicle) (*VehicleLegacy, error)
 	// Delete(ctx context.Context, id int) (*http.Response, error)
 }
 
@@ -129,7 +130,6 @@ func (s srv) Create(ctx context.Context, vehicle entity.Vehicle) (*VehicleLegacy
 	}
 
 	body, _ := ioutil.ReadAll(res.Body)
-	fmt.Print(string(body))
 
 	v := VehicleLegacy{}
 	err = json.Unmarshal(body, &v)
@@ -141,37 +141,40 @@ func (s srv) Create(ctx context.Context, vehicle entity.Vehicle) (*VehicleLegacy
 	return &v, nil
 }
 
-// func (s srv) Update(ctx context.Context, id int, auction entity.Auction) (*http.Response, error) {
-// 	b := body{
-// 		Operacao: "alterar",
-// 		Veiculo: VehicleLegacy{
-// 			ID:             id,
-// 			DataLance:      auction.Bid.Date,
-// 			Lote:           auction.LotID,
-// 			CodigoControle: auction.VehicleLotID,
-// 			Marca:          auction.Vehicle.Brand,
-// 			Modelo:         auction.Vehicle.Model,
-// 			AnoFabricacao:  auction.Vehicle.ManufacturingYear,
-// 			AnoModelo:      auction.Vehicle.ModelYear,
-// 			ValorLance:     auction.Bid.Value,
-// 			UsuarioLance:   auction.Bid.User,
-// 		},
-// 	}
+func (s srv) Update(ctx context.Context, vehicle entity.Vehicle) (*VehicleLegacy, error) {
+	b := body{
+		Operacao: "alterar",
+		Veiculo: VehicleLegacy{
+			ID:             vehicle.ID,
+			Marca:          vehicle.Brand,
+			Modelo:         vehicle.Model,
+			AnoFabricacao:  vehicle.ManufacturingYear,
+			AnoModelo:      vehicle.ModelYear,
+			Lote:           vehicle.Lot.ID,
+			CodigoControle: vehicle.Lot.VehicleLotID,
+			DataLance:      "-",
+			UsuarioLance:   "-",
+		},
+	}
 
-// 	req, err := makeRequest(b)
+	req, err := makeRequest(b)
 
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	if err != nil {
+		return nil, err
+	}
 
-// 	res, err := Client.Do(req)
+	res, err := Client.Do(req)
 
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	if err != nil {
+		return nil, err
+	}
 
-// 	return res, nil
-// }
+	if res.StatusCode == 200 {
+		return &b.Veiculo, nil
+	}
+
+	return nil, errors.New("error when updating in legacy api")
+}
 
 // func (s srv) Delete(ctx context.Context, id int) (*http.Response, error) {
 // 	b := body{

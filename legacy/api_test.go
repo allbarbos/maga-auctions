@@ -18,18 +18,31 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type vehicleResponse struct {
-	ID             int     `json:"ID"`
-	DataLance      string  `json:"DATALANCE"`
-	Lote           string  `json:"LOTE"`
-	CodigoControle string  `json:"CODIGOCONTROLE"`
-	Marca          string  `json:"MARCA"`
-	Modelo         string  `json:"MODELO"`
-	AnoFabricacao  int     `json:"ANOFABRICACAO"`
-	AnoModelo      int     `json:"ANOMODELO"`
-	ValorLance     float32 `json:"VALORLANCE"`
-	UsuarioLance   string  `json:"USUARIOLANCE"`
-}
+var (
+	ctx, cancel = context.WithTimeout(context.Background(), 2*time.Second)
+	ve          = entity.Vehicle{
+		Brand:             "YAMAHA",
+		Model:             "T115 CRYPTON ED",
+		ModelYear:         2011,
+		ManufacturingYear: 2011,
+		Lot: entity.Lot{
+			ID:           "0033",
+			VehicleLotID: "80623",
+		},
+	}
+	vel = legacy.VehicleLegacy{
+		Lote:           "0033",
+		CodigoControle: "80623",
+		Marca:          "YAMAHA",
+		Modelo:         "T115 CRYPTON ED",
+		AnoFabricacao:  2011,
+		AnoModelo:      2011,
+		ID:             0,
+		ValorLance:     0,
+		DataLance:      "-",
+		UsuarioLance:   "-",
+	}
+)
 
 func validResponseBody(payload interface{}) io.ReadCloser {
 	b, _ := json.Marshal(payload)
@@ -45,20 +58,8 @@ func invalidResponseBody() io.ReadCloser {
 
 func TestGet(t *testing.T) {
 	t.Run("must return a list of vehicles", func(t *testing.T) {
-		items := []vehicleResponse{
-			{
-				ID:             1,
-				DataLance:      "21/08/2020 - 11:24",
-				Lote:           "0033",
-				CodigoControle: "80623",
-				Marca:          "YAMAHA",
-				Modelo:         "T115 CRYPTON ED",
-				AnoFabricacao:  2011,
-				AnoModelo:      2011,
-				ValorLance:     0,
-				UsuarioLance:   "-",
-			},
-		}
+		defer cancel()
+		items := []legacy.VehicleLegacy{vel}
 
 		legacy.Client = &mock_legacy.MockClient{}
 		mock_legacy.GetDoFunc = func(*http.Request) (*http.Response, error) {
@@ -66,9 +67,6 @@ func TestGet(t *testing.T) {
 		}
 
 		api := legacy.NewAPI()
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-		defer cancel()
-
 		resp, err := api.Get(ctx)
 
 		assert.Nil(t, err)
@@ -98,6 +96,7 @@ func TestGet_Errors(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.desc, func(t *testing.T) {
+			defer cancel()
 			legacy.APIURI = tt.apiURI
 			legacy.Client = &mock_legacy.MockClient{}
 			mock_legacy.GetDoFunc = func(*http.Request) (*http.Response, error) {
@@ -105,9 +104,6 @@ func TestGet_Errors(t *testing.T) {
 			}
 
 			api := legacy.NewAPI()
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-			defer cancel()
-
 			_, err := api.Get(ctx)
 
 			assert.NotNil(t, err)
@@ -117,42 +113,17 @@ func TestGet_Errors(t *testing.T) {
 
 func TestCreate(t *testing.T) {
 	t.Run("must register a vehicle", func(t *testing.T) {
+		defer cancel()
 		legacy.Client = &mock_legacy.MockClient{}
-		v := vehicleResponse{
-			Lote:           "0033",
-			CodigoControle: "80623",
-			Marca:          "YAMAHA",
-			Modelo:         "T115 CRYPTON ED",
-			AnoFabricacao:  2011,
-			AnoModelo:      2011,
-			ID:             0,
-			ValorLance:     0,
-			DataLance:      "-",
-			UsuarioLance:   "-",
-		}
 		mock_legacy.GetDoFunc = func(*http.Request) (*http.Response, error) {
-			return &http.Response{Body: validResponseBody(v)}, nil
+			return &http.Response{Body: validResponseBody(vel)}, nil
 		}
 
 		api := legacy.NewAPI()
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-		defer cancel()
-
-		a := entity.Vehicle{
-			Brand:             "RENAULT",
-			Model:             "CLIO 16VS",
-			ModelYear:         2007,
-			ManufacturingYear: 2007,
-			Lot: entity.Lot{
-				ID:           "0196",
-				VehicleLotID: "56248",
-			},
-		}
-
-		resp, _ := api.Create(ctx, a)
+		resp, _ := api.Create(ctx, ve)
 
 		assert.NotNil(t, resp)
-		assert.EqualValues(t, v, *resp)
+		assert.Equal(t, vel, *resp)
 	})
 }
 
@@ -185,113 +156,71 @@ func TestCreate_Errors(t *testing.T) {
 			api := legacy.NewAPI()
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()
-			a := entity.Vehicle{
-				Brand:             "RENAULT",
-				Model:             "CLIO 16VS",
-				ModelYear:         2007,
-				ManufacturingYear: 2007,
-				Lot: entity.Lot{
-					ID:           "0196",
-					VehicleLotID: "56248",
-				},
-			}
 
-			_, err := api.Create(ctx, a)
+			_, err := api.Create(ctx, ve)
 
 			assert.NotNil(t, err)
-			assert.Equal(t, tt.want, err.Error())
+			assert.EqualError(t, err, tt.want)
 		})
 	}
 }
 
-// func TestUpdate(t *testing.T) {
-// 	t.Run("must update a vehicle", func(t *testing.T) {
-// 		legacy.Client = &mock_legacy.MockClient{}
-// 		mock_legacy.GetDoFunc = func(*http.Request) (*http.Response, error) {
-// 			return &http.Response{Body: http.NoBody, StatusCode: 200}, nil
-// 		}
+func TestUpdate(t *testing.T) {
+	t.Run("must update a vehicle", func(t *testing.T) {
+		defer cancel()
+		legacy.Client = &mock_legacy.MockClient{}
+		mock_legacy.GetDoFunc = func(*http.Request) (*http.Response, error) {
+			return &http.Response{Body: validResponseBody(vel), StatusCode: 200}, nil
+		}
 
-// 		api := legacy.NewAPI()
-// 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-// 		defer cancel()
+		api := legacy.NewAPI()
+		resp, _ := api.Update(ctx, ve)
 
-// 		a := entity.Auction{
-// 			LotID:        "0196",
-// 			VehicleLotID: "56248",
-// 			Bid: entity.Bid{
-// 				Date:  "21/08/2020 - 13:24",
-// 				User:  "-",
-// 				Value: 0,
-// 			},
-// 			Vehicle: entity.Vehicle{
-// 				ID:                1,
-// 				Brand:             "RENAULT",
-// 				ManufacturingYear: 2007,
-// 				Model:             "CLIO 16VS",
-// 				ModelYear:         2007,
-// 			},
-// 		}
+		assert.NotNil(t, resp)
+		assert.Equal(t, vel, *resp)
+	})
+}
 
-// 		resp, _ := api.Update(ctx, 1, a)
+func TestUpdate_Errors(t *testing.T) {
+	testCases := []struct {
+		desc, apiURI, want string
+		doRes              *http.Response
+		doError            error
+	}{
+		{
+			desc:   "must return error for an invalid url",
+			apiURI: "h!ttp://error",
+			want:   `parse "h!ttp://error": first path segment in URL cannot contain colon`,
+		},
+		{
+			desc:    "must return an error when failing the legacy api request",
+			doError: errors.New("error from legacy api"),
+			want:    "error from legacy api",
+		},
+		{
+			desc:  "must return an error when failing the legacy api request",
+			doRes: &http.Response{StatusCode: 500},
+			want:  "error when updating in legacy api",
+		},
+	}
 
-// 		assert.NotNil(t, resp)
-// 		assert.Equal(t, 200, resp.StatusCode)
-// 	})
-// }
+	for _, tt := range testCases {
+		t.Run(tt.desc, func(t *testing.T) {
+			legacy.APIURI = tt.apiURI
+			legacy.Client = &mock_legacy.MockClient{}
+			mock_legacy.GetDoFunc = func(*http.Request) (*http.Response, error) {
+				return tt.doRes, tt.doError
+			}
 
-// func TestUpdate_Errors(t *testing.T) {
-// 	testCases := []struct {
-// 		desc, apiURI, want string
-// 		doRes              *http.Response
-// 		doError            error
-// 	}{
-// 		{
-// 			desc:   "must return error for an invalid url",
-// 			apiURI: "h!ttp://error",
-// 			want:   `parse "h!ttp://error": first path segment in URL cannot contain colon`,
-// 		},
-// 		{
-// 			desc:    "must return an error when failing the legacy api request",
-// 			doError: errors.New("error from legacy api"),
-// 			want:    "error from legacy api",
-// 		},
-// 	}
+			api := legacy.NewAPI()
+			resp, err := api.Update(ctx, ve)
 
-// 	for _, tt := range testCases {
-// 		t.Run(tt.desc, func(t *testing.T) {
-// 			legacy.APIURI = tt.apiURI
-// 			legacy.Client = &mock_legacy.MockClient{}
-// 			mock_legacy.GetDoFunc = func(*http.Request) (*http.Response, error) {
-// 				return tt.doRes, tt.doError
-// 			}
-
-// 			api := legacy.NewAPI()
-// 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-// 			defer cancel()
-// 			a := entity.Auction{
-// 				LotID:        "0196",
-// 				VehicleLotID: "56248",
-// 				Bid: entity.Bid{
-// 					Date:  "21/08/2020 - 13:24",
-// 					User:  "-",
-// 					Value: 0,
-// 				},
-// 				Vehicle: entity.Vehicle{
-// 					ID:                1,
-// 					Brand:             "RENAULT",
-// 					ManufacturingYear: 2007,
-// 					Model:             "CLIO 16VS",
-// 					ModelYear:         2007,
-// 				},
-// 			}
-
-// 			_, err := api.Update(ctx, 1, a)
-
-// 			assert.NotNil(t, err)
-// 			assert.Equal(t, tt.want, err.Error())
-// 		})
-// 	}
-// }
+			assert.Nil(t, resp)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, tt.want)
+		})
+	}
+}
 
 // func TestDelete(t *testing.T) {
 // 	t.Run("must delete vehicle", func(t *testing.T) {

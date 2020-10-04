@@ -66,6 +66,21 @@ func (mr *MockAPIMockRecorder) Create(ctx, vehicle interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockAPI)(nil).Create), ctx, vehicle)
 }
 
+// Update mocks base method
+func (m *MockAPI) Update(ctx context.Context, vehicle entity.Vehicle) (*legacy.VehicleLegacy, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", ctx, vehicle)
+	ret0, _ := ret[0].(*legacy.VehicleLegacy)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Update indicates an expected call of Update
+func (mr *MockAPIMockRecorder) Update(ctx, vehicle interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockAPI)(nil).Update), ctx, vehicle)
+}
+
 // MockHTTPClient is a mock of HTTPClient interface
 type MockHTTPClient struct {
 	ctrl     *gomock.Controller
