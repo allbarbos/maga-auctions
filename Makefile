@@ -6,10 +6,6 @@ test: fmt
 
 cov: test
 	go tool cover -html=cover.out
-	
-api:
-	cd api/cmd && go run main.go
 
-importer:
-	cd importer/cmd && go run main.go
-	
+web:
+	cd api/cmd && go run main.go
