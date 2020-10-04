@@ -29,11 +29,12 @@ type API interface {
 	Get(ctx context.Context) ([]VehicleLegacy, error)
 	Create(ctx context.Context, vehicle *entity.Vehicle) error
 	Update(ctx context.Context, vehicle *entity.Vehicle) error
-	// Delete(ctx context.Context, id int) (*http.Response, error)
+	Delete(ctx context.Context, id int) error
 }
 
 type srv struct{}
 
+// VehicleLegacy is legacy entity
 type VehicleLegacy struct {
 	ID             int     `json:"ID,omitempty"`
 	DataLance      string  `json:"DATALANCE"`
@@ -162,23 +163,34 @@ func (s srv) Update(ctx context.Context, vehicle *entity.Vehicle) error {
 	return nil
 }
 
-// func (s srv) Delete(ctx context.Context, id int) (*http.Response, error) {
-// 	b := body{
-// 		Operacao: "apagar",
-// 		Veiculo:  VehicleLegacy{ID: id},
-// 	}
+func (s srv) Delete(ctx context.Context, id int) error {
+	b := body{
+		Operacao: "apagar",
+		Veiculo:  VehicleLegacy{ID: id},
+	}
 
-// 	req, err := makeRequest(b)
+	req, err := utils.MakeRequest(method, APIURI, b)
 
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	if err != nil {
+		return err
+	}
 
-// 	res, err := Client.Do(req)
+	res, err := Client.Do(req)
 
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	if err != nil {
+		return err
+	}
 
-// 	return res, nil
-// }
+	if res.StatusCode != 200 {
+		return errors.New("error when updating in legacy api")
+	}
+
+	body, _ := ioutil.ReadAll(res.Body)
+	isError, _ := regexp.MatchString("nao encontrado", string(body))
+
+	if isError {
+		return errors.New("id not found")
+	}
+
+	return nil
+}

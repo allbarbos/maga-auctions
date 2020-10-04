@@ -219,58 +219,64 @@ func TestUpdate_Errors(t *testing.T) {
 	}
 }
 
-// func TestDelete(t *testing.T) {
-// 	t.Run("must delete vehicle", func(t *testing.T) {
-// 		legacy.Client = &mock_legacy.MockClient{}
-// 		mock_legacy.GetDoFunc = func(*http.Request) (*http.Response, error) {
-// 			return &http.Response{Body: http.NoBody, StatusCode: 200}, nil
-// 		}
+func TestDelete(t *testing.T) {
+	resApi := struct{ Mensagem string }{"sucesso"}
 
-// 		api := legacy.NewAPI()
-// 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-// 		defer cancel()
+	t.Run("must delete vehicle", func(t *testing.T) {
+		defer cancel()
+		legacy.Client = &mock_legacy.MockClient{}
+		mock_legacy.GetDoFunc = func(*http.Request) (*http.Response, error) {
+			return &http.Response{Body: validResponseBody(resApi), StatusCode: 200}, nil
+		}
 
-// 		resp, _ := api.Delete(ctx, 1)
+		api := legacy.NewAPI()
+		err := api.Delete(ctx, 1)
 
-// 		assert.NotNil(t, resp)
-// 		assert.Equal(t, 200, resp.StatusCode)
-// 	})
-// }
+		assert.Nil(t, err)
+	})
+}
 
-// func TestDelete_Errors(t *testing.T) {
-// 	testCases := []struct {
-// 		desc, apiURI, want string
-// 		doRes              *http.Response
-// 		doError            error
-// 	}{
-// 		{
-// 			desc:   "must return error for an invalid url",
-// 			apiURI: "h!ttp://error",
-// 			want:   `parse "h!ttp://error": first path segment in URL cannot contain colon`,
-// 		},
-// 		{
-// 			desc:    "must return an error when failing the legacy api request",
-// 			doError: errors.New("error from legacy api"),
-// 			want:    "error from legacy api",
-// 		},
-// 	}
+func TestDelete_Errors(t *testing.T) {
+	testCases := []struct {
+		desc, apiURI, want string
+		doRes              *http.Response
+		doError            error
+	}{
+		{
+			desc:   "must return error for an invalid url",
+			apiURI: "h!ttp://error",
+			want:   `parse "h!ttp://error": first path segment in URL cannot contain colon`,
+		},
+		{
+			desc:    "must return an error when failing the legacy api request",
+			doError: errors.New("error from legacy api"),
+			want:    "error from legacy api",
+		},
+		{
+			desc:  "must return an error when failing the legacy api request",
+			doRes: &http.Response{StatusCode: 500},
+			want:  "error when updating in legacy api",
+		},
+		{
+			desc:  "must return an error when id is not found",
+			doRes: &http.Response{StatusCode: 200, Body: validResponseBody(struct{ Mensagem string }{"nao encontrado"})},
+			want:  "id not found",
+		},
+	}
 
-// 	for _, tt := range testCases {
-// 		t.Run(tt.desc, func(t *testing.T) {
-// 			legacy.APIURI = tt.apiURI
-// 			legacy.Client = &mock_legacy.MockClient{}
-// 			mock_legacy.GetDoFunc = func(*http.Request) (*http.Response, error) {
-// 				return tt.doRes, tt.doError
-// 			}
+	for _, tt := range testCases {
+		t.Run(tt.desc, func(t *testing.T) {
+			legacy.APIURI = tt.apiURI
+			legacy.Client = &mock_legacy.MockClient{}
+			mock_legacy.GetDoFunc = func(*http.Request) (*http.Response, error) {
+				return tt.doRes, tt.doError
+			}
 
-// 			api := legacy.NewAPI()
-// 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-// 			defer cancel()
+			api := legacy.NewAPI()
+			err := api.Delete(ctx, 1)
 
-// 			_, err := api.Delete(ctx, 1)
-
-// 			assert.NotNil(t, err)
-// 			assert.Equal(t, tt.want, err.Error())
-// 		})
-// 	}
-// }
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, tt.want)
+		})
+	}
+}
