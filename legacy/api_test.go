@@ -4,13 +4,10 @@ import (
 	"maga-auctions/entity"
 	"maga-auctions/legacy"
 	mock_legacy "maga-auctions/legacy/mocks"
+	"maga-auctions/utils"
 
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
-	"io"
-	"io/ioutil"
 	"net/http"
 	"testing"
 	"time"
@@ -30,71 +27,66 @@ var (
 			VehicleLotID: "80623",
 		},
 	}
-	vel = legacy.VehicleLegacy{
-		Lote:           "0033",
-		CodigoControle: "80623",
-		Marca:          "YAMAHA",
-		Modelo:         "T115 CRYPTON ED",
-		AnoFabricacao:  2011,
-		AnoModelo:      2011,
-		ID:             0,
-		ValorLance:     0,
-		DataLance:      "-",
-		UsuarioLance:   "-",
-	}
 )
 
-func validResponseBody(payload interface{}) io.ReadCloser {
-	b, _ := json.Marshal(payload)
-	return ioutil.NopCloser(bytes.NewReader(b))
+func mockApiLegacy(apiURI, pathJSON string, statusCode int, doError error) {
+	legacy.APIURI = apiURI
+	legacy.Client = &mock_legacy.MockClient{}
+	mock_legacy.GetDoFunc = func(*http.Request) (*http.Response, error) {
+		return &http.Response{Body: utils.TestMakeBody(pathJSON), StatusCode: statusCode}, doError
+	}
 }
 
 func TestGet(t *testing.T) {
 	t.Run("must return a list of vehicles", func(t *testing.T) {
 		defer cancel()
-		items := []legacy.VehicleLegacy{vel}
-
-		legacy.Client = &mock_legacy.MockClient{}
-		mock_legacy.GetDoFunc = func(*http.Request) (*http.Response, error) {
-			return &http.Response{Body: validResponseBody(items)}, nil
-		}
+		mockApiLegacy("https://test.com", "testdata/consultar_response_api.json", 200, nil)
 
 		api := legacy.NewAPI()
 		resp, err := api.Get(ctx)
 
 		assert.Nil(t, err)
-		assert.Greater(t, len(resp), 0)
+		assert.Equal(t, len(resp), 764)
 	})
 }
 
 func TestGet_Errors(t *testing.T) {
 	testCases := []struct {
-		desc, apiURI string
-		doRes        *http.Response
-		doError      error
+		desc, apiURI, jsonPATH, want string
+		legacyApiStatusCode          int
+		doError                      error
 	}{
 		{
 			desc:   "must return error for an invalid url",
-			apiURI: "h!ttp://error",
+			apiURI: "h!ttps://test.com",
+			want:   `parse "h!ttps://test.com": first path segment in URL cannot contain colon`,
 		},
 		{
-			desc:    "must return an error when failing the legacy api request",
-			doError: errors.New("error from legacy api"),
+			desc:                "must return an error when failing the legacy api request",
+			apiURI:              "https://test.com",
+			legacyApiStatusCode: 500,
+			doError:             errors.New("an error occurred while requesting the legacy api"),
+			want:                "an error occurred while requesting the legacy api",
 		},
 		{
-			desc:  "must return error when decode fails",
-			doRes: &http.Response{Body: http.NoBody},
+			desc:                "must return an error when failing the legacy api request",
+			apiURI:              "https://test.com",
+			legacyApiStatusCode: 500,
+			want:                "an error occurred while requesting the legacy api",
+		},
+		{
+			desc:                "must return an error when the object parse fails",
+			apiURI:              "https://test.com",
+			legacyApiStatusCode: 200,
+			jsonPATH:            "testdata/consultar_response_error_api.json",
+			want:                "invalid character '}' looking for beginning of value",
 		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.desc, func(t *testing.T) {
 			defer cancel()
-			legacy.APIURI = tt.apiURI
-			legacy.Client = &mock_legacy.MockClient{}
-			mock_legacy.GetDoFunc = func(*http.Request) (*http.Response, error) {
-				return tt.doRes, tt.doError
-			}
+			mockApiLegacy(tt.apiURI, tt.jsonPATH, tt.legacyApiStatusCode, tt.doError)
 
 			api := legacy.NewAPI()
 			_, err := api.Get(ctx)
@@ -107,50 +99,54 @@ func TestGet_Errors(t *testing.T) {
 func TestCreate(t *testing.T) {
 	t.Run("must register a vehicle", func(t *testing.T) {
 		defer cancel()
-		legacy.Client = &mock_legacy.MockClient{}
-		mock_legacy.GetDoFunc = func(*http.Request) (*http.Response, error) {
-			vel.ID = 13
-			return &http.Response{Body: validResponseBody(vel)}, nil
-		}
+		mockApiLegacy("https://test.com", "testdata/criar_response_api.json", 200, nil)
 
 		api := legacy.NewAPI()
 		err := api.Create(ctx, &ve)
 
 		assert.Nil(t, err)
-		assert.Greater(t, vel.ID, 0)
 	})
 }
 
 func TestCreate_Errors(t *testing.T) {
 	testCases := []struct {
-		desc, apiURI, want string
-		doRes              *http.Response
-		doError            error
+		desc, apiURI, jsonPATH, want string
+		legacyApiStatusCode          int
+		doError                      error
 	}{
 		{
 			desc:   "must return error for an invalid url",
-			apiURI: "h!ttp://error",
-			want:   `parse "h!ttp://error": first path segment in URL cannot contain colon`,
+			apiURI: "h!ttps://test.com",
+			want:   `parse "h!ttps://test.com": first path segment in URL cannot contain colon`,
 		},
 		{
-			desc:    "must return an error when failing the legacy api request",
-			doError: errors.New("error from legacy api"),
-			want:    "error from legacy api",
+			desc:                "must return an error when failing the legacy api request",
+			apiURI:              "https://test.com",
+			legacyApiStatusCode: 500,
+			doError:             errors.New("an error occurred while requesting the legacy api"),
+			want:                "an error occurred while requesting the legacy api",
+		},
+		{
+			desc:                "must return an error when failing the legacy api request",
+			apiURI:              "https://test.com",
+			legacyApiStatusCode: 500,
+			want:                "an error occurred while requesting the legacy api",
+		},
+		{
+			desc:                "must return an error when the object parse fails",
+			apiURI:              "https://test.com",
+			legacyApiStatusCode: 200,
+			jsonPATH:            "testdata/criar_response_error_api.json",
+			want:                "invalid character '}' looking for beginning of value",
 		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			legacy.APIURI = tt.apiURI
-			legacy.Client = &mock_legacy.MockClient{}
-			mock_legacy.GetDoFunc = func(*http.Request) (*http.Response, error) {
-				return tt.doRes, tt.doError
-			}
+			defer cancel()
+			mockApiLegacy(tt.apiURI, tt.jsonPATH, tt.legacyApiStatusCode, tt.doError)
 
 			api := legacy.NewAPI()
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-			defer cancel()
-
 			err := api.Create(ctx, &ve)
 
 			assert.NotNil(t, err)
@@ -162,10 +158,7 @@ func TestCreate_Errors(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	t.Run("must update a vehicle", func(t *testing.T) {
 		defer cancel()
-		legacy.Client = &mock_legacy.MockClient{}
-		mock_legacy.GetDoFunc = func(*http.Request) (*http.Response, error) {
-			return &http.Response{Body: validResponseBody(vel), StatusCode: 200}, nil
-		}
+		mockApiLegacy("https://test.com", "testdata/alterar_response_api.json", 200, nil)
 
 		api := legacy.NewAPI()
 		err := api.Update(ctx, &ve)
@@ -176,9 +169,9 @@ func TestUpdate(t *testing.T) {
 
 func TestUpdate_Errors(t *testing.T) {
 	testCases := []struct {
-		desc, apiURI, want string
-		doRes              *http.Response
-		doError            error
+		desc, apiURI, jsonPATH, want string
+		legacyApiStatusCode          int
+		doError                      error
 	}{
 		{
 			desc:   "must return error for an invalid url",
@@ -186,29 +179,29 @@ func TestUpdate_Errors(t *testing.T) {
 			want:   `parse "h!ttp://error": first path segment in URL cannot contain colon`,
 		},
 		{
-			desc:    "must return an error when failing the legacy api request",
-			doError: errors.New("error from legacy api"),
-			want:    "error from legacy api",
+			desc:                "must return an error when failing the legacy api request",
+			apiURI:              "https://test.com",
+			legacyApiStatusCode: 500,
+			doError:             errors.New("an error occurred while requesting the legacy api"),
+			want:                "an error occurred while requesting the legacy api",
 		},
 		{
-			desc:  "must return an error when failing the legacy api request",
-			doRes: &http.Response{StatusCode: 500},
-			want:  "error when updating in legacy api",
+			desc:                "must return an error when failing the legacy api request",
+			apiURI:              "https://test.com",
+			legacyApiStatusCode: 500,
+			want:                "an error occurred while requesting the legacy api",
 		},
 		{
-			desc:  "must return an error when id is not found",
-			doRes: &http.Response{StatusCode: 200, Body: validResponseBody(struct{ Mensagem string }{"nao encontrado"})},
-			want:  "id not found",
+			desc:                "must return an error when id is not found",
+			legacyApiStatusCode: 200,
+			jsonPATH:            "testdata/apagar_response_error_api.json",
+			want:                "id not found",
 		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			legacy.APIURI = tt.apiURI
-			legacy.Client = &mock_legacy.MockClient{}
-			mock_legacy.GetDoFunc = func(*http.Request) (*http.Response, error) {
-				return tt.doRes, tt.doError
-			}
+			mockApiLegacy(tt.apiURI, tt.jsonPATH, tt.legacyApiStatusCode, tt.doError)
 
 			api := legacy.NewAPI()
 			err := api.Update(ctx, &ve)
@@ -220,14 +213,9 @@ func TestUpdate_Errors(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	resApi := struct{ Mensagem string }{"sucesso"}
-
 	t.Run("must delete vehicle", func(t *testing.T) {
 		defer cancel()
-		legacy.Client = &mock_legacy.MockClient{}
-		mock_legacy.GetDoFunc = func(*http.Request) (*http.Response, error) {
-			return &http.Response{Body: validResponseBody(resApi), StatusCode: 200}, nil
-		}
+		mockApiLegacy("https://test.com", "testdata/apagar_response_api.json", 200, nil)
 
 		api := legacy.NewAPI()
 		err := api.Delete(ctx, 1)
@@ -238,9 +226,9 @@ func TestDelete(t *testing.T) {
 
 func TestDelete_Errors(t *testing.T) {
 	testCases := []struct {
-		desc, apiURI, want string
-		doRes              *http.Response
-		doError            error
+		desc, apiURI, jsonPATH, want string
+		legacyApiStatusCode          int
+		doError                      error
 	}{
 		{
 			desc:   "must return error for an invalid url",
@@ -248,29 +236,28 @@ func TestDelete_Errors(t *testing.T) {
 			want:   `parse "h!ttp://error": first path segment in URL cannot contain colon`,
 		},
 		{
-			desc:    "must return an error when failing the legacy api request",
-			doError: errors.New("error from legacy api"),
-			want:    "error from legacy api",
+			desc:                "must return an error when failing the legacy api request",
+			legacyApiStatusCode: 500,
+			doError:             errors.New("an error occurred while requesting the legacy api"),
+			want:                "an error occurred while requesting the legacy api",
 		},
 		{
-			desc:  "must return an error when failing the legacy api request",
-			doRes: &http.Response{StatusCode: 500},
-			want:  "error when updating in legacy api",
+			desc:                "must return an error when failing the legacy api request",
+			legacyApiStatusCode: 500,
+			want:                "an error occurred while requesting the legacy api",
 		},
 		{
-			desc:  "must return an error when id is not found",
-			doRes: &http.Response{StatusCode: 200, Body: validResponseBody(struct{ Mensagem string }{"nao encontrado"})},
-			want:  "id not found",
+			desc:                "must return an error when id is not found",
+			jsonPATH:            "testdata/apagar_response_error_api.json",
+			legacyApiStatusCode: 200,
+			want:                "id not found",
 		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			legacy.APIURI = tt.apiURI
-			legacy.Client = &mock_legacy.MockClient{}
-			mock_legacy.GetDoFunc = func(*http.Request) (*http.Response, error) {
-				return tt.doRes, tt.doError
-			}
+			defer cancel()
+			mockApiLegacy(tt.apiURI, tt.jsonPATH, tt.legacyApiStatusCode, tt.doError)
 
 			api := legacy.NewAPI()
 			err := api.Delete(ctx, 1)

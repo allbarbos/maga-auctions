@@ -4,14 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maga-auctions/api/helper/filters"
 	"maga-auctions/entity"
 	"maga-auctions/legacy"
 	mock_legacy "maga-auctions/legacy/mocks"
+	"maga-auctions/utils"
 	"maga-auctions/vehicle"
+	"net/http"
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -42,69 +44,107 @@ var (
 	}
 )
 
+func mockApiLegacy(pathJSON string, statusCode int) {
+	legacy.APIURI = "https://test.com"
+	legacy.Client = &mock_legacy.MockClient{}
+	mock_legacy.GetDoFunc = func(*http.Request) (*http.Response, error) {
+		return &http.Response{Body: utils.TestMakeBody(pathJSON), StatusCode: statusCode}, nil
+	}
+}
+
+func TestAll(t *testing.T) {
+	t.Run("must return list of vehicle", func(t *testing.T) {
+		defer cancel()
+		mockApiLegacy("testdata/consultar_response_api.json", 200)
+
+		api := legacy.NewAPI()
+		srv := vehicle.NewService(api)
+		filters := []filters.Filter{
+			filters.VehicleBrand{Brand: "RENAULT"},
+			filters.VehicleModel{InitialLetters: "S"},
+			filters.VehicleYearBetween{Min: 2011, Max: 2013},
+		}
+
+		resp, _ := srv.All(ctx, filters)
+
+		assert.NotNil(t, resp)
+		assert.Len(t, *resp, 9)
+	})
+}
+
+func TestAll_Errors(t *testing.T) {
+	t.Run("BILE", func(t *testing.T) {
+		defer cancel()
+		mockApiLegacy("", 500)
+
+		api := legacy.NewAPI()
+		srv := vehicle.NewService(api)
+
+		item, err := srv.All(ctx, []filters.Filter{})
+
+		assert.Nil(t, item)
+		fmt.Print(err.Error())
+		assert.EqualError(t, err, "internal server error")
+	})
+}
+
 func TestByID(t *testing.T) {
 	t.Run("must return vehicle", func(t *testing.T) {
 		defer cancel()
-		c := gomock.NewController(t)
-		defer c.Finish()
+		mockApiLegacy("testdata/consultar_response_api.json", 200)
 
-		api := mock_legacy.NewMockAPI(c)
-		items := []legacy.VehicleLegacy{vehicleLegacy}
-
-		api.EXPECT().Get(ctx).Return(items, nil)
-
+		api := legacy.NewAPI()
 		srv := vehicle.NewService(api)
 
 		item, _ := srv.ByID(ctx, 1)
 
 		assert.NotNil(t, item)
-		assert.Equal(t, items[0].ID, item.ID)
-		assert.Equal(t, items[0].Marca, item.Brand)
-		assert.Equal(t, items[0].Modelo, item.Model)
-		assert.Equal(t, items[0].AnoModelo, item.ModelYear)
-		assert.Equal(t, items[0].AnoFabricacao, item.ManufacturingYear)
-		assert.Equal(t, items[0].Lote, item.Lot.ID)
-		assert.Equal(t, items[0].CodigoControle, item.Lot.VehicleLotID)
+		assert.Equal(t, 1, item.ID)
+		assert.Equal(t, "RENAULT", item.Brand)
+		assert.Equal(t, "CLIO 16VS", item.Model)
+		assert.Equal(t, 2007, item.ModelYear)
+		assert.Equal(t, 2007, item.ManufacturingYear)
+		assert.Equal(t, "0196", item.Lot.ID)
+		assert.Equal(t, "56248", item.Lot.VehicleLotID)
 	})
 }
 
 func TestByID_Errors(t *testing.T) {
 	testCases := []struct {
-		desc, want string
-		id         int
-		err        error
-		items      []legacy.VehicleLegacy
+		desc, jsonPATH, want    string
+		id, legacyApiStatusCode int
+		err                     error
+		items                   []legacy.VehicleLegacy
 	}{
 		{
-			desc: "must return error when id less than zero",
-			id:   0,
-			want: "invalid id",
+			desc:                "must return error when id less than zero",
+			id:                  0,
+			legacyApiStatusCode: 500,
+			want:                "invalid id",
 		},
 		{
-			desc: "must return error when legacy API fails",
-			id:   1,
-			err:  errors.New("legacy api error"),
-			want: "internal server error",
+			desc:                "must return error when legacy API fails",
+			id:                  1,
+			legacyApiStatusCode: 500,
+			err:                 errors.New("legacy api error"),
+			want:                "internal server error",
 		},
 		{
-			desc:  "must return error when id greater than zero",
-			id:    2,
-			want:  "invalid id",
-			items: []legacy.VehicleLegacy{},
+			desc:                "must return error when id greater than zero",
+			id:                  9999,
+			legacyApiStatusCode: 200,
+			jsonPATH:            "testdata/consultar_response_api.json",
+			want:                "invalid id",
+			items:               []legacy.VehicleLegacy{},
 		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			c := gomock.NewController(t)
-			defer c.Finish()
+			defer cancel()
+			mockApiLegacy(tt.jsonPATH, tt.legacyApiStatusCode)
 
-			api := mock_legacy.NewMockAPI(c)
-
-			if tt.items != nil || tt.err != nil {
-				api.EXPECT().Get(ctx).Return(tt.items, tt.err)
-			}
-
+			api := legacy.NewAPI()
 			srv := vehicle.NewService(api)
 
 			item, err := srv.ByID(ctx, tt.id)
@@ -119,36 +159,32 @@ func TestByID_Errors(t *testing.T) {
 func TestCreate(t *testing.T) {
 	t.Run("must create vehicle", func(t *testing.T) {
 		defer cancel()
-		c := gomock.NewController(t)
-		defer c.Finish()
+		mockApiLegacy("testdata/criar_response_api.json", 200)
 
-		api := mock_legacy.NewMockAPI(c)
-		api.EXPECT().Create(ctx, &v).Return(nil)
-
+		api := legacy.NewAPI()
 		srv := vehicle.NewService(api)
+
 		item, _ := srv.Create(ctx, v)
 
 		assert.NotNil(t, item)
-		assert.Equal(t, vehicleLegacy.ID, item.ID)
-		assert.Equal(t, vehicleLegacy.Marca, item.Brand)
-		assert.Equal(t, vehicleLegacy.Modelo, item.Model)
-		assert.Equal(t, vehicleLegacy.AnoModelo, item.ModelYear)
-		assert.Equal(t, vehicleLegacy.AnoFabricacao, item.ManufacturingYear)
-		assert.Equal(t, vehicleLegacy.Lote, item.Lot.ID)
-		assert.Equal(t, vehicleLegacy.CodigoControle, item.Lot.VehicleLotID)
+		assert.Equal(t, 9999, item.ID)
+		assert.Equal(t, v.Brand, item.Brand)
+		assert.Equal(t, v.Model, item.Model)
+		assert.Equal(t, v.ModelYear, item.ModelYear)
+		assert.Equal(t, v.ManufacturingYear, item.ManufacturingYear)
+		assert.Equal(t, v.Lot.ID, item.Lot.ID)
+		assert.Equal(t, v.Lot.VehicleLotID, item.Lot.VehicleLotID)
 	})
 }
 
 func TestCreate_Error(t *testing.T) {
 	t.Run("must return error when legacy API fails", func(t *testing.T) {
 		defer cancel()
-		c := gomock.NewController(t)
-		defer c.Finish()
+		mockApiLegacy("", 500)
 
-		api := mock_legacy.NewMockAPI(c)
-		api.EXPECT().Create(ctx, &v).Return(errors.New("legacy API fails"))
-
+		api := legacy.NewAPI()
 		srv := vehicle.NewService(api)
+
 		item, err := srv.Create(ctx, v)
 
 		assert.Nil(t, item)
@@ -159,13 +195,11 @@ func TestCreate_Error(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	t.Run("must update vehicle", func(t *testing.T) {
 		defer cancel()
-		c := gomock.NewController(t)
-		defer c.Finish()
+		mockApiLegacy("testdata/alterar_response_api.json", 200)
 
-		api := mock_legacy.NewMockAPI(c)
-		api.EXPECT().Update(ctx, &v).Return(nil)
-
+		api := legacy.NewAPI()
 		srv := vehicle.NewService(api)
+
 		err := srv.Update(ctx, &v)
 
 		assert.Nil(t, err)
@@ -174,10 +208,10 @@ func TestUpdate(t *testing.T) {
 
 func TestUpdate_Errors(t *testing.T) {
 	testCases := []struct {
-		desc, want string
-		id         int
-		err        error
-		items      []legacy.VehicleLegacy
+		desc, jsonPATH, want    string
+		id, legacyApiStatusCode int
+		err                     error
+		items                   []legacy.VehicleLegacy
 	}{
 		{
 			desc: "must return error when id less than zero",
@@ -186,33 +220,31 @@ func TestUpdate_Errors(t *testing.T) {
 			want: "invalid id",
 		},
 		{
-			desc: "must return error when id is not found",
-			id:   1000,
-			err:  errors.New("id not found"),
-			want: "id not found",
+			desc:                "must return error when id is not found",
+			id:                  1000,
+			jsonPATH:            "testdata/alterar_response_error_api.json",
+			legacyApiStatusCode: 200,
+			err:                 errors.New("id not found"),
+			want:                "id not found",
 		},
 		{
-			desc: "must return error when an unknown error occurs in legacy api",
-			id:   2,
-			err:  errors.New("error when updating in legacy api"),
-			want: "internal server error",
+			desc:                "must return error when an unknown error occurs in legacy api",
+			id:                  2,
+			legacyApiStatusCode: 500,
+			err:                 errors.New("error when updating in legacy api"),
+			want:                "internal server error",
 		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.desc, func(t *testing.T) {
 			defer cancel()
-			c := gomock.NewController(t)
-			defer c.Finish()
+			mockApiLegacy(tt.jsonPATH, tt.legacyApiStatusCode)
 
-			api := mock_legacy.NewMockAPI(c)
-
-			if tt.id != 0 {
-				api.EXPECT().Update(ctx, &v).Return(tt.err)
-			}
+			api := legacy.NewAPI()
+			srv := vehicle.NewService(api)
 
 			v.ID = tt.id
-			srv := vehicle.NewService(api)
 			err := srv.Update(ctx, &v)
 
 			assert.NotNil(t, err)
@@ -224,13 +256,11 @@ func TestUpdate_Errors(t *testing.T) {
 func TestDelete(t *testing.T) {
 	t.Run("must delete vehicle", func(t *testing.T) {
 		defer cancel()
-		c := gomock.NewController(t)
-		defer c.Finish()
+		mockApiLegacy("testdata/apagar_response_api.json", 200)
 
-		api := mock_legacy.NewMockAPI(c)
-		api.EXPECT().Delete(ctx, 1).Return(nil)
-
+		api := legacy.NewAPI()
 		srv := vehicle.NewService(api)
+
 		err := srv.Delete(ctx, 1)
 
 		assert.Nil(t, err)
@@ -239,10 +269,10 @@ func TestDelete(t *testing.T) {
 
 func TestDelete_Errors(t *testing.T) {
 	testCases := []struct {
-		desc, want string
-		id         int
-		err        error
-		items      []legacy.VehicleLegacy
+		desc, jsonPATH, want    string
+		id, legacyApiStatusCode int
+		err                     error
+		items                   []legacy.VehicleLegacy
 	}{
 		{
 			desc: "must return error when id less than zero",
@@ -251,33 +281,31 @@ func TestDelete_Errors(t *testing.T) {
 			want: "invalid id",
 		},
 		{
-			desc: "must return error when id is not found",
-			id:   1000,
-			err:  errors.New("id not found"),
-			want: "id not found",
+			desc:                "must return error when id is not found",
+			id:                  1000,
+			legacyApiStatusCode: 200,
+			jsonPATH:            "testdata/apagar_response_error_api.json",
+			err:                 errors.New("id not found"),
+			want:                "id not found",
 		},
 		{
-			desc: "must return error when an unknown error occurs in legacy api",
-			id:   2,
-			err:  errors.New("error when updating in legacy api"),
-			want: "internal server error",
+			desc:                "must return error when an unknown error occurs in legacy api",
+			id:                  2,
+			legacyApiStatusCode: 500,
+			err:                 errors.New("error when updating in legacy api"),
+			want:                "internal server error",
 		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.desc, func(t *testing.T) {
 			defer cancel()
-			c := gomock.NewController(t)
-			defer c.Finish()
+			mockApiLegacy(tt.jsonPATH, tt.legacyApiStatusCode)
 
-			api := mock_legacy.NewMockAPI(c)
-
-			if tt.id != 0 {
-				api.EXPECT().Delete(ctx, tt.id).Return(tt.err)
-			}
+			api := legacy.NewAPI()
+			srv := vehicle.NewService(api)
 
 			v.ID = tt.id
-			srv := vehicle.NewService(api)
 			err := srv.Delete(ctx, tt.id)
 
 			assert.NotNil(t, err)

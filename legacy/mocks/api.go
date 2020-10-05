@@ -8,7 +8,6 @@ import (
 	context "context"
 	gomock "github.com/golang/mock/gomock"
 	entity "maga-auctions/entity"
-	legacy "maga-auctions/legacy"
 	reflect "reflect"
 )
 
@@ -36,10 +35,10 @@ func (m *MockAPI) EXPECT() *MockAPIMockRecorder {
 }
 
 // Get mocks base method
-func (m *MockAPI) Get(ctx context.Context) ([]legacy.VehicleLegacy, error) {
+func (m *MockAPI) Get(ctx context.Context) ([]entity.Vehicle, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", ctx)
-	ret0, _ := ret[0].([]legacy.VehicleLegacy)
+	ret0, _ := ret[0].([]entity.Vehicle)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

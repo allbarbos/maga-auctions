@@ -26,7 +26,7 @@ func init() {
 
 // API contract
 type API interface {
-	Get(ctx context.Context) ([]VehicleLegacy, error)
+	Get(ctx context.Context) ([]entity.Vehicle, error)
 	Create(ctx context.Context, vehicle *entity.Vehicle) error
 	Update(ctx context.Context, vehicle *entity.Vehicle) error
 	Delete(ctx context.Context, id int) error
@@ -58,7 +58,7 @@ func NewAPI() API {
 	return &srv{}
 }
 
-func (s srv) Get(ctx context.Context) ([]VehicleLegacy, error) {
+func (s srv) Get(ctx context.Context) ([]entity.Vehicle, error) {
 	req, err := utils.MakeRequest(method, APIURI, body{Operacao: "consultar"})
 
 	if err != nil {
@@ -71,6 +71,10 @@ func (s srv) Get(ctx context.Context) ([]VehicleLegacy, error) {
 		return nil, err
 	}
 
+	if res.StatusCode != 200 {
+		return nil, errors.New("an error occurred while requesting the legacy api")
+	}
+
 	defer res.Body.Close()
 
 	items := []VehicleLegacy{}
@@ -80,7 +84,27 @@ func (s srv) Get(ctx context.Context) ([]VehicleLegacy, error) {
 		return nil, err
 	}
 
-	return items, nil
+	v := []entity.Vehicle{}
+
+	for i := 0; i < len(items); i++ {
+		l := items[i]
+
+		item := entity.Vehicle{
+			ID:                l.ID,
+			Brand:             l.Marca,
+			Model:             l.Modelo,
+			ModelYear:         l.AnoModelo,
+			ManufacturingYear: l.AnoFabricacao,
+			Lot: entity.Lot{
+				ID:           l.Lote,
+				VehicleLotID: l.CodigoControle,
+			},
+		}
+
+		v = append(v, item)
+	}
+
+	return v, nil
 }
 
 func (s srv) Create(ctx context.Context, vehicle *entity.Vehicle) error {
@@ -108,6 +132,10 @@ func (s srv) Create(ctx context.Context, vehicle *entity.Vehicle) error {
 
 	if err != nil {
 		return err
+	}
+
+	if res.StatusCode != 200 {
+		return errors.New("an error occurred while requesting the legacy api")
 	}
 
 	body, _ := ioutil.ReadAll(res.Body)
@@ -150,7 +178,7 @@ func (s srv) Update(ctx context.Context, vehicle *entity.Vehicle) error {
 	}
 
 	if res.StatusCode != 200 {
-		return errors.New("error when updating in legacy api")
+		return errors.New("an error occurred while requesting the legacy api")
 	}
 
 	body, _ := ioutil.ReadAll(res.Body)
@@ -182,7 +210,7 @@ func (s srv) Delete(ctx context.Context, id int) error {
 	}
 
 	if res.StatusCode != 200 {
-		return errors.New("error when updating in legacy api")
+		return errors.New("an error occurred while requesting the legacy api")
 	}
 
 	body, _ := ioutil.ReadAll(res.Body)
