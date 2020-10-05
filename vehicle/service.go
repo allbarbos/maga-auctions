@@ -2,6 +2,7 @@ package vehicle
 
 import (
 	"maga-auctions/api/handler"
+	"maga-auctions/api/helper/filters"
 	"maga-auctions/entity"
 	"maga-auctions/legacy"
 
@@ -10,8 +11,9 @@ import (
 
 // Service contract
 type Service interface {
-	Create(ctx context.Context, vehicle entity.Vehicle) (*entity.Vehicle, error)
+	All(ctx context.Context, filters []filters.Filter) (*[]entity.Vehicle, error)
 	ByID(ctx context.Context, id int) (*entity.Vehicle, error)
+	Create(ctx context.Context, vehicle entity.Vehicle) (*entity.Vehicle, error)
 	Update(ctx context.Context, vehicle *entity.Vehicle) error
 	Delete(ctx context.Context, id int) error
 }
@@ -25,6 +27,20 @@ func NewService(api legacy.API) Service {
 	return &srv{
 		legacyAPI: api,
 	}
+}
+
+func (s srv) All(ctx context.Context, filters []filters.Filter) (*[]entity.Vehicle, error) {
+	items, err := s.legacyAPI.Get(ctx)
+
+	if err != nil || items == nil {
+		return nil, handler.InternalServer{Message: "error when searching for vehicles in legacy api"}
+	}
+
+	for _, f := range filters {
+		f.Apply(&items)
+	}
+
+	return &items, nil
 }
 
 func (s srv) ByID(ctx context.Context, id int) (*entity.Vehicle, error) {
@@ -42,20 +58,8 @@ func (s srv) ByID(ctx context.Context, id int) (*entity.Vehicle, error) {
 		return nil, handler.BadRequest{Message: "invalid id"}
 	}
 
-	l := items[id-1]
-	v := &entity.Vehicle{
-		ID:                l.ID,
-		Brand:             l.Marca,
-		Model:             l.Modelo,
-		ModelYear:         l.AnoModelo,
-		ManufacturingYear: l.AnoFabricacao,
-		Lot: entity.Lot{
-			ID:           l.Lote,
-			VehicleLotID: l.CodigoControle,
-		},
-	}
-
-	return v, nil
+	vehicle := items[id-1]
+	return &vehicle, nil
 }
 
 func (s srv) Create(ctx context.Context, vehicle entity.Vehicle) (*entity.Vehicle, error) {

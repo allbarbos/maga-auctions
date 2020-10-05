@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"maga-auctions/api/handler"
+	"maga-auctions/api/helper/filters"
 	"maga-auctions/entity"
 	"maga-auctions/vehicle"
 	"strconv"
@@ -26,6 +27,7 @@ type Link struct {
 // VehicleController contract
 type VehicleController interface {
 	Create(c *gin.Context)
+	All(c *gin.Context)
 	ByID(c *gin.Context)
 	Update(c *gin.Context)
 	Delete(c *gin.Context)
@@ -94,6 +96,27 @@ func (v vehicleCtrl) Create(c *gin.Context) {
 	res := response{Vehicle: *registered, Links: links}
 
 	handler.ResponseSuccess(201, res, c)
+}
+
+func (v vehicleCtrl) All(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	f := []filters.Filter{
+		filters.VehicleBrand{Brand: "RENAULT"},
+		filters.VehicleYearBetween{Min: 2011, Max: 2015},
+		// filters.VehicleModel{InitialLetters: "S"},
+		// filters.VehicleYear{ManufacturingYear: 2011, ModelYear: 2012},
+	}
+
+	items, err := v.srv.All(ctx, f)
+
+	if err != nil {
+		handler.ResponseError(err, c)
+		return
+	}
+
+	handler.ResponseSuccess(200, items, c)
 }
 
 func (v vehicleCtrl) ByID(c *gin.Context) {
