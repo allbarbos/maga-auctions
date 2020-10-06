@@ -60,15 +60,14 @@ func TestAll(t *testing.T) {
 		api := legacy.NewAPI()
 		srv := vehicle.NewService(api)
 		filters := []filters.Filter{
-			filters.VehicleBrand{Brand: "RENAULT"},
-			filters.VehicleModel{InitialLetters: "S"},
-			filters.VehicleYearBetween{Min: 2011, Max: 2013},
+			filters.NewVehicleBrand("RENAULT"),
+			filters.NewVehicleModel("S"),
 		}
 
-		resp, _ := srv.All(ctx, filters)
+		resp, _ := srv.All(ctx, filters, "asc")
 
 		assert.NotNil(t, resp)
-		assert.Len(t, *resp, 9)
+		assert.Len(t, *resp, 20)
 	})
 }
 
@@ -80,7 +79,7 @@ func TestAll_Errors(t *testing.T) {
 		api := legacy.NewAPI()
 		srv := vehicle.NewService(api)
 
-		item, err := srv.All(ctx, []filters.Filter{})
+		item, err := srv.All(ctx, []filters.Filter{}, "")
 
 		assert.Nil(t, item)
 		fmt.Print(err.Error())
@@ -89,7 +88,7 @@ func TestAll_Errors(t *testing.T) {
 }
 
 func TestByID(t *testing.T) {
-	t.Run("must return vehicle", func(t *testing.T) {
+	t.Run("error", func(t *testing.T) {
 		defer cancel()
 		mockApiLegacy("testdata/consultar_response_api.json", 200)
 

@@ -98,18 +98,72 @@ func (v vehicleCtrl) Create(c *gin.Context) {
 	handler.ResponseSuccess(201, res, c)
 }
 
+func buildFilters(c *gin.Context, fs *[]filters.Filter) {
+	fb := c.Query("brand")
+	if fb != "" {
+		*fs = append(*fs, filters.NewVehicleBrand(fb))
+	}
+
+	md := c.Query("model")
+	if md != "" {
+		*fs = append(*fs, filters.NewVehicleModel(md))
+	}
+
+	mMin, err := strconv.ParseInt(c.DefaultQuery("manufacturingYearMin", "0"), 10, 32)
+	if err != nil {
+		handler.ResponseError(handler.BadRequest{Message: "manufacturing year min is invalid"}, c)
+		return
+	}
+
+	mMax, err := strconv.ParseInt(c.DefaultQuery("manufacturingYearMax", "0"), 10, 32)
+	if err != nil {
+		handler.ResponseError(handler.BadRequest{Message: "manufacturing year min is invalid"}, c)
+		return
+	}
+
+	if mMin > 0 && mMax > 0 {
+		f, err := filters.NewVehicleYearBetween(int(mMin), int(mMax))
+
+		if err != nil {
+			handler.ResponseError(handler.BadRequest{Message: err.Error()}, c)
+			return
+		}
+
+		*fs = append(*fs, f)
+	}
+
+	mfy, err := strconv.ParseInt(c.DefaultQuery("manufacturingYear", "0"), 10, 32)
+	if err != nil {
+		handler.ResponseError(handler.BadRequest{Message: "manufacturing year is invalid"}, c)
+		return
+	}
+
+	mdy, err := strconv.ParseInt(c.DefaultQuery("modelYear", "0"), 10, 32)
+	if err != nil {
+		handler.ResponseError(handler.BadRequest{Message: "model year is invalid"}, c)
+		return
+	}
+
+	if mfy > 0 && mdy > 0 {
+		f, err := filters.NewVehicleYear(int(mdy), int(mfy))
+
+		if err != nil {
+			handler.ResponseError(handler.BadRequest{Message: err.Error()}, c)
+			return
+		}
+
+		*fs = append(*fs, f)
+	}
+}
+
 func (v vehicleCtrl) All(c *gin.Context) {
+	var fs []filters.Filter
+	buildFilters(c, &fs)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	f := []filters.Filter{
-		filters.VehicleBrand{Brand: "RENAULT"},
-		filters.VehicleYearBetween{Min: 2011, Max: 2015},
-		// filters.VehicleModel{InitialLetters: "S"},
-		// filters.VehicleYear{ManufacturingYear: 2011, ModelYear: 2012},
-	}
-
-	items, err := v.srv.All(ctx, f)
+	items, err := v.srv.All(ctx, fs, c.Query("bidOrder"))
 
 	if err != nil {
 		handler.ResponseError(err, c)

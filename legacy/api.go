@@ -9,6 +9,7 @@ import (
 	"maga-auctions/utils"
 	"net/http"
 	"regexp"
+	"time"
 )
 
 var (
@@ -89,6 +90,13 @@ func (s srv) Get(ctx context.Context) ([]entity.Vehicle, error) {
 	for i := 0; i < len(items); i++ {
 		l := items[i]
 
+		layout := "02/01/2006 - 15:04"
+		bidDate, err := time.Parse(layout, l.DataLance)
+
+		if err != nil {
+			continue
+		}
+
 		item := entity.Vehicle{
 			ID:                l.ID,
 			Brand:             l.Marca,
@@ -98,6 +106,11 @@ func (s srv) Get(ctx context.Context) ([]entity.Vehicle, error) {
 			Lot: entity.Lot{
 				ID:           l.Lote,
 				VehicleLotID: l.CodigoControle,
+			},
+			Bid: entity.Bid{
+				Date:  bidDate,
+				User:  l.UsuarioLance,
+				Value: l.ValorLance,
 			},
 		}
 

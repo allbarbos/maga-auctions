@@ -5,17 +5,23 @@ import (
 	"strings"
 )
 
-// VehicleModel filter
-type VehicleModel struct {
+type vehicleModel struct {
 	InitialLetters string
 }
 
+// NewVehicleModel filter
+func NewVehicleModel(letters string) Filter {
+	return &vehicleModel{
+		InitialLetters: strings.ToUpper(letters),
+	}
+}
+
 // Rule filter model
-func (v VehicleModel) Rule(vehicle entity.Vehicle) bool {
+func (v vehicleModel) Rule(vehicle entity.Vehicle) bool {
 	return strings.HasPrefix(vehicle.Model, v.InitialLetters)
 }
 
 // Apply filter
-func (v VehicleModel) Apply(input *[]entity.Vehicle) {
+func (v vehicleModel) Apply(input *[]entity.Vehicle) {
 	filterApply(input, v.Rule)
 }

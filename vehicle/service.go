@@ -5,13 +5,15 @@ import (
 	"maga-auctions/api/helper/filters"
 	"maga-auctions/entity"
 	"maga-auctions/legacy"
+	"sort"
+	"strings"
 
 	"context"
 )
 
 // Service contract
 type Service interface {
-	All(ctx context.Context, filters []filters.Filter) (*[]entity.Vehicle, error)
+	All(ctx context.Context, filters []filters.Filter, bidOrder string) (*[]entity.Vehicle, error)
 	ByID(ctx context.Context, id int) (*entity.Vehicle, error)
 	Create(ctx context.Context, vehicle entity.Vehicle) (*entity.Vehicle, error)
 	Update(ctx context.Context, vehicle *entity.Vehicle) error
@@ -29,11 +31,19 @@ func NewService(api legacy.API) Service {
 	}
 }
 
-func (s srv) All(ctx context.Context, filters []filters.Filter) (*[]entity.Vehicle, error) {
+func (s srv) All(ctx context.Context, filters []filters.Filter, bidOrder string) (*[]entity.Vehicle, error) {
 	items, err := s.legacyAPI.Get(ctx)
 
 	if err != nil || items == nil {
 		return nil, handler.InternalServer{Message: "error when searching for vehicles in legacy api"}
+	}
+
+	if strings.TrimSpace(bidOrder) != "" {
+		if bidOrder == "asc" {
+			sort.Sort(entity.VehiclesAsc(items))
+		} else {
+			sort.Sort(entity.VehiclesDesc(items))
+		}
 	}
 
 	for _, f := range filters {
