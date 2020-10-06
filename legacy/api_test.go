@@ -46,7 +46,7 @@ func TestGet(t *testing.T) {
 		resp, err := api.Get(ctx)
 
 		assert.Nil(t, err)
-		assert.Equal(t, len(resp), 764)
+		assert.Equal(t, len(resp), 763)
 	})
 }
 

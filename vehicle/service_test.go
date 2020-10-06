@@ -53,26 +53,44 @@ func mockApiLegacy(pathJSON string, statusCode int) {
 }
 
 func TestAll(t *testing.T) {
-	t.Run("must return list of vehicle", func(t *testing.T) {
-		defer cancel()
-		mockApiLegacy("testdata/consultar_response_api.json", 200)
+	testCases := []struct {
+		desc, order string
+		want        int
+	}{
+		{
+			desc:  "must return list of vehicle asc",
+			order: "asc",
+			want:  20,
+		},
+		{
+			desc:  "must return list of vehicle asc",
+			order: "desc",
+			want:  20,
+		},
+	}
 
-		api := legacy.NewAPI()
-		srv := vehicle.NewService(api)
-		filters := []filters.Filter{
-			filters.NewVehicleBrand("RENAULT"),
-			filters.NewVehicleModel("S"),
-		}
+	for _, tt := range testCases {
+		t.Run(tt.desc, func(t *testing.T) {
+			defer cancel()
+			mockApiLegacy("testdata/consultar_response_api.json", 200)
 
-		resp, _ := srv.All(ctx, filters, "asc")
+			api := legacy.NewAPI()
+			srv := vehicle.NewService(api)
+			filters := []filters.Filter{
+				filters.NewVehicleBrand("RENAULT"),
+				filters.NewVehicleModel("S"),
+			}
 
-		assert.NotNil(t, resp)
-		assert.Len(t, *resp, 20)
-	})
+			resp, _ := srv.All(ctx, filters, tt.order)
+
+			assert.NotNil(t, resp)
+			assert.Len(t, *resp, 20)
+		})
+	}
 }
 
 func TestAll_Errors(t *testing.T) {
-	t.Run("BILE", func(t *testing.T) {
+	t.Run("return error when searching for vehicles in legacy api", func(t *testing.T) {
 		defer cancel()
 		mockApiLegacy("", 500)
 
@@ -308,6 +326,76 @@ func TestDelete_Errors(t *testing.T) {
 			err := srv.Delete(ctx, tt.id)
 
 			assert.NotNil(t, err)
+			assert.EqualError(t, err, tt.want)
+		})
+	}
+}
+
+func TestByLotID(t *testing.T) {
+	testCases := []struct {
+		desc, order string
+	}{
+		{
+			desc:  "must return list of vehicle asc",
+			order: "asc",
+		},
+		{
+			desc:  "must return list of vehicle asc",
+			order: "desc",
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.desc, func(t *testing.T) {
+			defer cancel()
+			mockApiLegacy("testdata/consultar_response_api.json", 200)
+
+			api := legacy.NewAPI()
+			srv := vehicle.NewService(api)
+
+			resp, _ := srv.ByLotID(ctx, "0161", tt.order)
+
+			assert.NotNil(t, resp)
+
+			items := *resp
+
+			if tt.order == "asc" {
+				assert.True(t, items[0].Bid.Date.Before(items[1].Bid.Date))
+			} else {
+				assert.True(t, items[0].Bid.Date.After(items[1].Bid.Date))
+			}
+		})
+	}
+}
+
+func TestByLotID_Errors(t *testing.T) {
+	testCases := []struct {
+		desc, lotID, jsonPATH, want string
+	}{
+		{
+			desc:  "must return error when invalid lot id",
+			lotID: "",
+			want:  "invalid lot id",
+		},
+		{
+			desc:     "must return error when invalid lot id",
+			lotID:    "0161",
+			jsonPATH: "testdata/consultar_response_error_api.json",
+			want:     "internal server error",
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.desc, func(t *testing.T) {
+			defer cancel()
+			mockApiLegacy(tt.jsonPATH, 200)
+
+			api := legacy.NewAPI()
+			srv := vehicle.NewService(api)
+
+			resp, err := srv.ByLotID(ctx, tt.lotID, "")
+
+			assert.Nil(t, resp)
 			assert.EqualError(t, err, tt.want)
 		})
 	}
