@@ -18,11 +18,14 @@ func Config() *gin.Engine {
 	router := gin.Default()
 
 	router.GET("/maga-auctions/v1/health-check", healthCtrl().HealthCheck)
+
 	router.POST("/maga-auctions/v1/vehicles", vehicleCtrl().Create)
 	router.GET("/maga-auctions/v1/vehicles", vehicleCtrl().All)
 	router.GET("/maga-auctions/v1/vehicles/:id", vehicleCtrl().ByID)
 	router.PUT("/maga-auctions/v1/vehicles/:id", vehicleCtrl().Update)
 	router.DELETE("/maga-auctions/v1/vehicles/:id", vehicleCtrl().Delete)
+
+	router.GET("/maga-auctions/v1/lots/:id/vehicles", lotCtrl().VehiclesByLot)
 
 	return router
 }
@@ -35,4 +38,10 @@ func vehicleCtrl() ctrl.VehicleController {
 	api := legacy.NewAPI()
 	srv := vehicle.NewService(api)
 	return ctrl.NewVehicle(srv)
+}
+
+func lotCtrl() ctrl.LotController {
+	api := legacy.NewAPI()
+	srv := vehicle.NewService(api)
+	return ctrl.NewLot(srv)
 }

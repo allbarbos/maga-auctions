@@ -15,6 +15,7 @@ import (
 type Service interface {
 	All(ctx context.Context, filters []filters.Filter, bidOrder string) (*[]entity.Vehicle, error)
 	ByID(ctx context.Context, id int) (*entity.Vehicle, error)
+	ByLotID(ctx context.Context, lotID, bidOrder string) (*[]entity.Vehicle, error)
 	Create(ctx context.Context, vehicle entity.Vehicle) (*entity.Vehicle, error)
 	Update(ctx context.Context, vehicle *entity.Vehicle) error
 	Delete(ctx context.Context, id int) error
@@ -70,6 +71,37 @@ func (s srv) ByID(ctx context.Context, id int) (*entity.Vehicle, error) {
 
 	vehicle := items[id-1]
 	return &vehicle, nil
+}
+
+func (s srv) ByLotID(ctx context.Context, lotID, bidOrder string) (*[]entity.Vehicle, error) {
+	if strings.TrimSpace(lotID) == "" {
+		return nil, handler.BadRequest{Message: "invalid lot id"}
+	}
+
+	items, err := s.legacyAPI.Get(ctx)
+
+	if err != nil || items == nil {
+		return nil, handler.InternalServer{Message: "error when searching for vehicles in legacy api"}
+	}
+
+	var vehicles []entity.Vehicle
+
+	for _, v := range items {
+		if v.Lot.ID == lotID {
+			vehicles = append(vehicles, v)
+			continue
+		}
+	}
+
+	if strings.TrimSpace(bidOrder) != "" {
+		if bidOrder == "asc" {
+			sort.Sort(entity.VehiclesAsc(vehicles))
+		} else {
+			sort.Sort(entity.VehiclesDesc(vehicles))
+		}
+	}
+
+	return &vehicles, nil
 }
 
 func (s srv) Create(ctx context.Context, vehicle entity.Vehicle) (*entity.Vehicle, error) {
