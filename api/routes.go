@@ -30,18 +30,19 @@ func Config() *gin.Engine {
 	return router
 }
 
+func buildSrv() vehicle.Service {
+	api := legacy.NewAPI()
+	return vehicle.NewService(api)
+}
+
 func healthCtrl() ctrl.HealthCheck {
-	return ctrl.HealthCheck{}
+	return ctrl.NewHealthCheck(buildSrv())
 }
 
 func vehicleCtrl() ctrl.VehicleController {
-	api := legacy.NewAPI()
-	srv := vehicle.NewService(api)
-	return ctrl.NewVehicle(srv)
+	return ctrl.NewVehicle(buildSrv())
 }
 
 func lotCtrl() ctrl.LotController {
-	api := legacy.NewAPI()
-	srv := vehicle.NewService(api)
-	return ctrl.NewLot(srv)
+	return ctrl.NewLot(buildSrv())
 }

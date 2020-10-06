@@ -16,13 +16,14 @@ var (
 	// Client is the web client
 	Client utils.HTTPClient
 	// APIURI is legacy service url
-	APIURI, method string
+	APIURI, method, dateLayout string
 )
 
 func init() {
 	Client = &http.Client{}
 	APIURI = utils.EnvVars.APILegacy.URI
 	method = "POST"
+	dateLayout = "02/01/2006 - 15:04"
 }
 
 // API contract
@@ -90,8 +91,7 @@ func (s srv) Get(ctx context.Context) ([]entity.Vehicle, error) {
 	for i := 0; i < len(items); i++ {
 		l := items[i]
 
-		layout := "02/01/2006 - 15:04"
-		bidDate, err := time.Parse(layout, l.DataLance)
+		bidDate, err := time.Parse(dateLayout, l.DataLance)
 
 		if err != nil {
 			continue
@@ -130,8 +130,8 @@ func (s srv) Create(ctx context.Context, vehicle *entity.Vehicle) error {
 			Modelo:         vehicle.Model,
 			AnoFabricacao:  vehicle.ManufacturingYear,
 			AnoModelo:      vehicle.ModelYear,
-			DataLance:      "-",
-			UsuarioLance:   "-",
+			DataLance:      vehicle.Bid.Date.Format(dateLayout),
+			UsuarioLance:   vehicle.Bid.User,
 		},
 	}
 
@@ -173,8 +173,8 @@ func (s srv) Update(ctx context.Context, vehicle *entity.Vehicle) error {
 			AnoModelo:      vehicle.ModelYear,
 			Lote:           vehicle.Lot.ID,
 			CodigoControle: vehicle.Lot.VehicleLotID,
-			DataLance:      "-",
-			UsuarioLance:   "-",
+			DataLance:      vehicle.Bid.Date.Format(dateLayout),
+			UsuarioLance:   vehicle.Bid.User,
 		},
 	}
 
