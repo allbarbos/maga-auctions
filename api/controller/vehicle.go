@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maga-auctions/api/handler"
 	"maga-auctions/api/helper/filters"
@@ -64,17 +65,14 @@ func (v vehicleCtrl) Create(c *gin.Context) {
 	registered, err := v.srv.Create(ctx, ve)
 
 	if err != nil {
-		handler.ResponseError(
-			handler.InternalServer{
-				Message: "deu ruim",
-			},
-			c,
-		)
+		handler.ResponseError(err, c)
 		return
 	}
 
 	c.Header("Location", fmt.Sprintf("%s%s/%d", c.Request.Host, c.Request.RequestURI, registered.ID))
+
 	uri := fmt.Sprintf("%s/%d", c.Request.RequestURI, registered.ID)
+
 	links := []Link{
 		{
 			Relation:     "self",
@@ -98,7 +96,7 @@ func (v vehicleCtrl) Create(c *gin.Context) {
 	handler.ResponseSuccess(201, res, c)
 }
 
-func buildFilters(c *gin.Context, fs *[]filters.Filter) {
+func buildFilters(c *gin.Context, fs *[]filters.Filter) error {
 	fb := c.Query("brand")
 	if fb != "" {
 		*fs = append(*fs, filters.NewVehicleBrand(fb))
@@ -111,22 +109,19 @@ func buildFilters(c *gin.Context, fs *[]filters.Filter) {
 
 	mMin, err := strconv.ParseInt(c.DefaultQuery("manufacturingYearMin", "0"), 10, 32)
 	if err != nil {
-		handler.ResponseError(handler.BadRequest{Message: "manufacturing year min is invalid"}, c)
-		return
+		return errors.New("manufacturing year min is invalid")
 	}
 
 	mMax, err := strconv.ParseInt(c.DefaultQuery("manufacturingYearMax", "0"), 10, 32)
 	if err != nil {
-		handler.ResponseError(handler.BadRequest{Message: "manufacturing year min is invalid"}, c)
-		return
+		return errors.New("manufacturing year max is invalid")
 	}
 
 	if mMin > 0 && mMax > 0 {
 		f, err := filters.NewVehicleYearBetween(int(mMin), int(mMax))
 
 		if err != nil {
-			handler.ResponseError(handler.BadRequest{Message: err.Error()}, c)
-			return
+			return err
 		}
 
 		*fs = append(*fs, f)
@@ -134,31 +129,35 @@ func buildFilters(c *gin.Context, fs *[]filters.Filter) {
 
 	mfy, err := strconv.ParseInt(c.DefaultQuery("manufacturingYear", "0"), 10, 32)
 	if err != nil {
-		handler.ResponseError(handler.BadRequest{Message: "manufacturing year is invalid"}, c)
-		return
+		return errors.New("manufacturing year is invalid")
 	}
 
 	mdy, err := strconv.ParseInt(c.DefaultQuery("modelYear", "0"), 10, 32)
 	if err != nil {
-		handler.ResponseError(handler.BadRequest{Message: "model year is invalid"}, c)
-		return
+		return errors.New("model year is invalid")
 	}
 
 	if mfy > 0 && mdy > 0 {
 		f, err := filters.NewVehicleYear(int(mdy), int(mfy))
 
 		if err != nil {
-			handler.ResponseError(handler.BadRequest{Message: err.Error()}, c)
-			return
+			return errors.New(err.Error())
 		}
 
 		*fs = append(*fs, f)
 	}
+
+	return nil
 }
 
 func (v vehicleCtrl) All(c *gin.Context) {
 	var fs []filters.Filter
-	buildFilters(c, &fs)
+	err := buildFilters(c, &fs)
+
+	if err != nil {
+		handler.ResponseError(handler.BadRequest{Message: err.Error()}, c)
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()

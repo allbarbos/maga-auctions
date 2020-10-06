@@ -33,17 +33,19 @@ func (h healthCheck) HealthCheck(c *gin.Context) {
 	_, err := h.srv.ByID(ctx, 1)
 
 	s := "ok"
+	code := 200
 
 	if err != nil {
 		s = "error"
+		code = 500
 	}
 
 	hc := entity.HealthCheck{
-		Status: "ok",
+		Status: s,
 		Dependencies: map[string]string{
 			"legacyApi": s,
 		},
 	}
 
-	c.JSON(200, hc)
+	c.JSON(code, hc)
 }
