@@ -14,23 +14,126 @@ paths:
       tags:
       - health-check
       responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheck'
         500:
           description: Internal Server Error
-          content: {}
-
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
   /vehicles:
     get:
       tags:
-      - vehicles
+        - vehicles
+      summary: List all
+      parameters:
+        - name: bidOrder
+          in: query
+          description: Sort by last bid date
+          required: false
+          example: desc
+          schema:
+            type: string
+        - name: brand
+          in: query
+          description: Filters vehicles by brand
+          required: false
+          example: renault
+          schema:
+            type: string
+        - name: model
+          in: query
+          description: filters vehicles by the initial letters of the model
+          required: false
+          example: CLI
+          schema:
+            type: string
+        - name: manufacturingYearMin
+          in: query
+          description: filters vehicles manufactured between year of manufacture (MIN and MAX)
+          required: false
+          example: 2015
+          schema:
+            type: string
+        - name: manufacturingYearMax
+          in: query
+          description: filters vehicles manufactured between year of manufacture (MIN and MAX)
+          required: false
+          example: 2016
+          schema:
+            type: string
+        - name: manufacturingYear
+          in: query
+          description: filters vehicles by year of manufacture and model year (combined fields)
+          required: false
+          example: 2016
+          schema:
+            type: string
+        - name: modelYear
+          in: query
+          description: filters vehicles by year of manufacture and model year (combined fields)
+          required: false
+          example: 2016
+          schema:
+            type: string
       responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicles'
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
         500:
           description: Internal Server Error
-          content: {}
-
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+    post:
+      tags:
+        - vehicles
+      summary: Register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestVehicle'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
   /vehicles/{id}:
-     get:
+    get:
       tags:
       - vehicles
+      summary: List one
       parameters:
       - name: id
         in: path
@@ -38,12 +141,95 @@ paths:
         required: true
         schema:
           type: integer
-          format: int64
+          format: int32
       responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  vehicle:
+                    $ref: '#/components/schemas/Vehicle'
+                  links:
+                    $ref: '#/components/schemas/Links'
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
         500:
           description: Internal Server Error
-          content: {}
-
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+    put:
+      tags:
+        - vehicles
+      summary: Update
+      parameters:
+      - name: id
+        in: path
+        description: ID of vehicle
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestVehicle'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+    delete:
+      tags:
+        - vehicles
+      summary: Delete
+      parameters:
+      - name: id
+        in: path
+        description: ID of vehicle
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        200:
+          description: Success
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
   /lots/{id}/vehicles:
     get:
       tags:
@@ -51,12 +237,159 @@ paths:
       parameters:
       - name: id
         in: path
-        description: ID of vehicle
+        description: ID of lot
         required: true
         schema:
           type: integer
-          format: int64
+          format: int32
+      - name: bidOrder
+        in: query
+        description: Sort by last bid date
+        required: false
+        example: desc
+        schema:
+          type: string
       responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicles'
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
         500:
           description: Internal Server Error
-          content: {}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+components:
+  schemas:
+    Vehicles:
+      type: array
+      items:
+        $ref: '#/components/schemas/Vehicle'
+    Vehicle:
+      type: "object"
+      properties:
+        id:
+          type: integer
+          example: 13
+          description: Identificador único do veículo
+        brand:
+          type: "string"
+          example: "RENAULT"
+          description: Marca do veículo
+        model:
+          type: "string"
+          example: "CLIO 16VS"
+          description: Modelo do veículo
+        modelYear:
+          type: integer
+          example: 2008
+          description: Ano do modelo do veículo
+        manufacturingYear:
+          type: integer
+          example: 2007
+          description: Ano de fabricação do veículo
+        lot:
+          $ref: '#/components/schemas/Lot'
+        bid:
+          $ref: '#/components/schemas/Bid'
+    Bid:
+      type: "object"
+      properties:
+        user:
+          type: "string"
+          example: "allbarbos"
+          description: Usuário cadastrado na plataforma que fez o último lance
+        value:
+          type: integer
+          format: float
+          example: 1500
+          description: Valor do último lance dado
+        date:
+          type: string
+          format: date-time
+          example: "2020-08-27T10:20:00Z"
+          description: Data/hora que foi realizado o último lance
+    Lot:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+          example: "0196"
+          description: Agrupador de um conjunto de veículos
+        vehicleLotId:
+          type: "string"
+          example: "56248"
+          description: Código único do veículo dentro do lote
+    HealthCheck:
+      type: "object"
+      properties:
+        status:
+          type: "string"
+          example: "ok"
+          description: Informa o status do serviço - ok/error
+        dependencies:
+          type: "object"
+          properties:
+            legacyApi:
+              type: "string"
+              example: "ok"
+              description: Informa o status da API Legada - ok/error
+    Links:
+      type: array
+      items:
+        type: object
+        properties:
+          uri:
+            type: string
+            example: "/maga-auctions/v1/vehicles/{id}"
+          rel:
+            type: string
+            example: "self"
+          type:
+            type: string
+            example: "PUT"
+      example:
+        - uri: /maga-auctions/v1/vehicles/13
+          rel: self
+          type: PUT
+        - uri: /maga-auctions/v1/vehicles/13
+          rel: self
+          type: DELETE
+    RequestVehicle:
+      type: "object"
+      properties:
+        brand:
+          type: "string"
+          example: "RENAULT"
+          description: Marca do veículo
+        model:
+          type: "string"
+          example: "CLIO 16VS"
+          description: Modelo do veículo
+        modelYear:
+          type: integer
+          example: 2008
+          description: Ano do modelo do veículo
+        manufacturingYear:
+          type: integer
+          example: 2007
+          description: Ano de fabricação do veículo
+        lot:
+          $ref: '#/components/schemas/Lot'
+        bid:
+          $ref: '#/components/schemas/Bid'
+    ResponseError:
+      type: "object"
+      properties:
+        error:
+          type: string
+          example: "message"
