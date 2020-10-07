@@ -21,7 +21,7 @@ var (
 
 func init() {
 	Client = &http.Client{}
-	APIURI = utils.EnvVars.APILegacy.URI
+	APIURI = utils.EnvVars.Legacy.URI
 	method = "POST"
 	dateLayout = "02/01/2006 - 15:04"
 }

@@ -5,6 +5,7 @@ import (
 	"maga-auctions/legacy"
 	"maga-auctions/utils"
 	"maga-auctions/vehicle"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,6 +17,7 @@ func Config() *gin.Engine {
 	}
 
 	router := gin.Default()
+	router.Use(configCors)
 
 	router.GET("/maga-auctions/v1/health-check", healthCtrl().HealthCheck)
 
@@ -28,6 +30,18 @@ func Config() *gin.Engine {
 	router.GET("/maga-auctions/v1/lots/:id/vehicles", lotCtrl().VehiclesByLot)
 
 	return router
+}
+
+func configCors(c *gin.Context) {
+	c.Header("Access-Control-Allow-Origin", "*")
+	c.Header("Access-Control-Allow-Methods", "*")
+	c.Header("Access-Control-Allow-Headers", "*")
+	c.Header("Content-Type", "application/json")
+	if c.Request.Method != "OPTIONS" {
+		c.Next()
+	} else {
+		c.AbortWithStatus(http.StatusOK)
+	}
 }
 
 func buildSrv() vehicle.Service {

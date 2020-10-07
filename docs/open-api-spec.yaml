@@ -1,0 +1,62 @@
+openapi: 3.0.1
+info:
+  title: Maga Auctions
+  version: 2.0.0
+servers:
+- url: http://localhost:8080/maga-auctions/v1
+tags:
+- name: health-check
+- name: vehicles
+- name: lots
+paths:
+  /health-check:
+    get:
+      tags:
+      - health-check
+      responses:
+        500:
+          description: Internal Server Error
+          content: {}
+
+  /vehicles:
+    get:
+      tags:
+      - vehicles
+      responses:
+        500:
+          description: Internal Server Error
+          content: {}
+
+  /vehicles/{id}:
+     get:
+      tags:
+      - vehicles
+      parameters:
+      - name: id
+        in: path
+        description: ID of vehicle
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        500:
+          description: Internal Server Error
+          content: {}
+
+  /lots/{id}/vehicles:
+    get:
+      tags:
+      - lots
+      parameters:
+      - name: id
+        in: path
+        description: ID of vehicle
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        500:
+          description: Internal Server Error
+          content: {}

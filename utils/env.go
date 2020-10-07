@@ -14,7 +14,7 @@ var EnvVars Config
 
 func init() {
 	readFile(&EnvVars)
-	readEnv(&EnvVars)
+	readEnv()
 	fmt.Printf("%+v", EnvVars)
 }
 
@@ -25,9 +25,9 @@ type Config struct {
 		Port string `yaml:"port", envconfig:"API_PORT"`
 	} `yaml:"api"`
 
-	APILegacy struct {
-		URI string `yaml:"uri", envconfig:"API_LEGACY"`
-	} `yaml:"api-legacy"`
+	Legacy struct {
+		URI string `yaml:"uri", envconfig:"LEGACY_URI"`
+	} `yaml:"legacy"`
 }
 
 func processError(err error) {
@@ -35,7 +35,7 @@ func processError(err error) {
 }
 
 func readFile(cfg *Config) {
-	f, err := os.Open("config.yml")
+	f, err := os.Open("config1.yml")
 	if err != nil {
 		processError(err)
 	}
@@ -53,8 +53,13 @@ func readFile(cfg *Config) {
 	}
 }
 
-func readEnv(cfg *Config) {
-	err := envconfig.Process("", cfg)
+type API struct {
+	Env  string
+	Port string
+}
+
+func readEnv() {
+	err := envconfig.Process("", &EnvVars)
 	if err != nil {
 		processError(err)
 	}

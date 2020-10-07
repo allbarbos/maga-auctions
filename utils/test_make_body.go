@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 )
 
 func TestMakeBody(pathJSON string) io.ReadCloser {
@@ -12,7 +13,7 @@ func TestMakeBody(pathJSON string) io.ReadCloser {
 		return nil
 	}
 
-	jsonFile, err := os.Open(pathJSON)
+	jsonFile, err := os.Open(filepath.Clean(pathJSON))
 	if err != nil {
 		panic(err)
 	}

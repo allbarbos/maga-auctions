@@ -1,0 +1,24 @@
+version: '3'
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - dev-portal
+    environment:
+      API_ENV: development
+      API_PORT: 8080
+      LEGACY_URI: https://dev.apiluiza.com.br/legado/veiculo
+    ports:
+      - 8080:8080
+    restart: always
+
+  dev-portal:
+    image: swaggerapi/swagger-ui
+    ports:
+    - "8081:8080"
+    volumes:
+    - ./docs/open-api-spec.yaml:/spec.yaml
+    environment:
+      SWAGGER_JSON: /spec.yaml

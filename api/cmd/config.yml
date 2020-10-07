@@ -2,5 +2,5 @@ api:
   env: development
   port: 8080
 
-api-legacy:
+legacy:
   uri: https://dev.apiluiza.com.br/legado/veiculo
